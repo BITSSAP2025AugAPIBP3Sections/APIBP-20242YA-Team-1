@@ -47,9 +47,9 @@ Run lint and type checks before committing:
 
 When submitting a PR:
 - Keep PRs small and focused on one change.
-- Use a meaningful PR title (follows ).
-- Describe the change clearly in the PR body.
-- Include screenshots (for UI changes).
+- Use a meaningful PR title and follow - [ServiceName] Short Description
+- Describe the change clearly in the PR body. (added/updated)
+- Add steps to verify functionality.
 - Ensure all tests pass and build is successful.
 - Reference the related issue (e.g., Closes #45).
 
