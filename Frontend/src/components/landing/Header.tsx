@@ -25,7 +25,7 @@ export const Header = () => {
             transition={{ delay: 0.2 }}
             className="flex items-center"
           >
-            <h1 className="text-xl md:text-2xl font-bold text-primary cursor-pointer">
+            <h1 className="text-xl md:text-2xl font-bold text-primary dark:text-white cursor-pointer">
               vendorIQ.ai
             </h1>
           </motion.div>
