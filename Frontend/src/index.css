@@ -97,8 +97,8 @@ All colors MUST be HSL.
     --input: 215 20% 18%;
     --ring: 214 95% 50%;
     
-    --hero-gradient-start: 215 30% 10%;
-    --hero-gradient-end: 215 28% 12%;
+    --hero-gradient-start: 215 30% 4%;
+    --hero-gradient-end: 215 28% 6%;
     
     --feature-card-border: 215 20% 18%;
     --feature-card-hover: 215 25% 14%;
