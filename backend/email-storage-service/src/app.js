@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import  {config} from  "./config/index.js";
+import {config} from "./config/index.js";
 
 //imports for swagger documentation
 import swaggerUi from "swagger-ui-express";
