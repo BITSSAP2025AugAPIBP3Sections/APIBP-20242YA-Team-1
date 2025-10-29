@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import sheetsRoutes from "./src/routes/sheetsRoutes.js";
+import swaggerDocs from "./routes/swaggerDocs.js";
 
 dotenv.config();
 
@@ -9,6 +10,7 @@ app.use(express.json());
 
 // Routes
 app.use("/api/v1/sheets", sheetsRoutes);
+app.use("/api-docs", swaggerDocs);  // Swagger route
 
 const PORT = process.env.PORT || 4004;
 app.listen(PORT, () => {
