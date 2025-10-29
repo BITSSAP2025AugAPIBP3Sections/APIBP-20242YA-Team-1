@@ -30,6 +30,7 @@ export const getTrends = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+}
 };
 
 export const exportData = async (req, res) => {
