@@ -24,19 +24,19 @@ export const getTrends = async (req, res) => {
       res.json(data);
     } catch (error) {
       res.status(500).json({ error: error.message });
-    }
-  };
-  
-  const SUPPORTED_FORMATS = ["csv", "xlsx", "pdf"];
-  export const exportData = async (req, res) => {
-    const format = req.query.format;
-    if (!format || !SUPPORTED_FORMATS.includes(format.toLowerCase())) {
-      return res.status(400).json({ error: `Invalid or missing 'format' query parameter. Supported formats are: ${SUPPORTED_FORMATS.join(", ")}` });
-    }
-    try {
-      const file = await exportSheetData(format);
-      res.download(file);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  };
+  try {
+    const data = await fetchTrends();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const exportData = async (req, res) => {
+  try {
+    const file = await exportSheetData(req.query.format);
+    res.download(file);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
