@@ -8,3 +8,12 @@
 
 .DS_Store
 .vscode/
+
+
+
+venv/
+__pycache__/
+.env
+*.json
+*.db
+*.sqlite3
