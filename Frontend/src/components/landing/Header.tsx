@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Link, Navigate } from "react-router-dom";
 
 export const Header = () => {
   const scrollToSection = (id: string) => {
@@ -45,24 +46,16 @@ export const Header = () => {
               About Us
             </button>
             <ThemeToggle />
-            <Button
-              variant="hero"
-              size="default"
-              onClick={() => scrollToSection("hero")}
-            >
-              Get Started
+            <Button variant="hero" size="default" asChild>
+              <Link to="/register">Get Started</Link>
             </Button>
           </nav>
 
           {/* Mobile Navigation */}
           <div className="flex md:hidden items-center gap-2">
             <ThemeToggle />
-            <Button
-              variant="hero"
-              size="sm"
-              onClick={() => scrollToSection("hero")}
-            >
-              Get Started
+            <Button variant="hero" size="sm" asChild>
+              <Link to="/register">Get Started</Link>
             </Button>
           </div>
         </div>
