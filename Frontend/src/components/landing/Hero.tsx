@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 import { useRef } from "react";
+import { Link } from "react-router-dom";
 
 export const Hero = () => {
   const ref = useRef(null);
@@ -47,9 +48,10 @@ export const Hero = () => {
             transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
             className="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
-            <Button variant="hero" size="lg" className="text-base">
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5" />
+            <Button variant="hero" size="lg" className="text-base" asChild>
+              <Link to="/register">Get Started
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-base">
               Learn More
