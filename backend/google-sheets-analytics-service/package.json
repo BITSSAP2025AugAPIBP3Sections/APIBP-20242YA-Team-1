@@ -14,8 +14,8 @@
     "axios": "^1.13.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "googleapis": "^164.1.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "googleapis": "^164.1.0"
   }
 }
