@@ -17,3 +17,21 @@ export const getSummary = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getTrends = async (req, res) => {
+    try {
+      const data = await fetchTrends();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
+  export const exportData = async (req, res) => {
+    try {
+      const file = await exportSheetData(req.query.format);
+      res.download(file);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
