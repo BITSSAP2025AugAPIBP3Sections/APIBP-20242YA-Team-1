@@ -1,1 +1,10 @@
 .env
+**/node_modules/
+
+**/logs/
+*.log
+
+**/.env
+
+.DS_Store
+.vscode/
