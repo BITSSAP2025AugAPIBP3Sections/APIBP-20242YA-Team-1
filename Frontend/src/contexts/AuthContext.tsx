@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Simple user shape
 export interface User {
@@ -125,35 +126,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
-      const response = await fetch('/api/auth/google', { method: 'POST' });
-      if (!response.ok) {
-        const err = 'Google login failed';
-        setError(err);
-        return { success: false, error: err };
-      }
-      console.log('Google auth response received', response);
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "GET",
+        credentials: "include", // important for sessions
+      });
+  
       const data = await response.json();
-      // Expecting data.user with id, fullName, email
-      if (!data.user) {
-        const err = 'Invalid Google auth response';
-        setError(err);
-        return { success: false, error: err };
+      console.log('Google OAuth URL response:', data); // Debug log
+  
+      if (data.auth_url) {
+        // redirect to Google's OAuth URL
+        window.location.href = data.auth_url;
+        return { success: true };
+      } else {
+        return { success: false, error: 'Google auth URL not received' };
       }
-      const sessionUser: User = { id: data.user.id, fullName: data.user.fullName, email: data.user.email };
-      localStorage.setItem(LS_SESSION_KEY, JSON.stringify(sessionUser));
-      setUser(sessionUser);
-      return { success: true };
     } catch (e) {
-      const err = 'Network error during Google login';
-      setError(err);
-      return { success: false, error: err };
-    } finally {
-      setIsLoading(false);
+      console.error('Google login error:', e);
+      return { success: false, error: 'Network error during Google login' };
     }
   };
+  
+  
+  
 
   const signOut = () => {
     localStorage.removeItem(LS_SESSION_KEY);

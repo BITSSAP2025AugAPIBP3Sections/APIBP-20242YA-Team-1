@@ -148,7 +148,7 @@ const Login = () => {
                     setIsLoading(false);
                     if (res.success) {
                       toast({ description: 'Logged in with Google.' });
-                      navigate('/');
+                  
                     } else {
                       toast({ description: res.error || 'Google login failed.' });
                     }
