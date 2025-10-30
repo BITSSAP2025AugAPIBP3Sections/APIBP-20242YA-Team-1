@@ -13,3 +13,8 @@ This microservice extracts text from vendor invoice PDFs using OCR and converts 
 ---
 
 ## 📁 Project Structure
+app/
+├── routes/ # API routes
+├── services/ # Business logic (Gemini, OCR)
+├── models/ # Data models (Pydantic)
+└── utils/ # Helper functions
