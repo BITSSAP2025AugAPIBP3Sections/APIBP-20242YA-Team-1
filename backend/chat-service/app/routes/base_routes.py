@@ -17,6 +17,6 @@ async def health_check():
     """
     return {
         "status": "ok",
-        "service": "invoice-ocr",
+        "service": "chat-service",
         "version": "1.0.0"
     }
