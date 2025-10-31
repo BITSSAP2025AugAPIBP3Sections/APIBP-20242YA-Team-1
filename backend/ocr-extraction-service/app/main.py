@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import base_routes
+from app.routes import base_routes,ocr_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -20,7 +20,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(base_routes.router)
-
+app.include_router(ocr_routes.router)
 @app.get("/", tags=["Root"])
 async def root():
     """
