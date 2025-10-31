@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from app.core.loader import VendorDataLoader
 from app.core.embedder import EmbeddingService
 from app.core.retriever import VectorDatabase
