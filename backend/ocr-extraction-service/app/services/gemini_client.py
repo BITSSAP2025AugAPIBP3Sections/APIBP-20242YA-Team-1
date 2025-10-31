@@ -75,8 +75,8 @@ def extract_invoice_json_from_text(extracted_text: str):
             raise ValueError("Invalid JSON returned by Gemini API")
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ Gemini API request failed: {e}")
+        print(f"Gemini API request failed: {e}")
         return {"error": str(e)}
     except Exception as e:
-        print(f"❌ Error while parsing Gemini response: {e}")
+        print(f"Error while parsing Gemini response: {e}")
         return {"error": str(e)}
