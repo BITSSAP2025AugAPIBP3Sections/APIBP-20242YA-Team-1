@@ -32,11 +32,11 @@ AI-driven chatbot microservice for vendor and invoice analysis, providing intell
 ## 🔄 Pipeline
 ### Data Ingestion Pipeline:
 `
-Load vendor JSON -> Convert to chunks -> Generate Embeddingg -> Store in vector DB 
+Load vendor JSON -> Convert to chunks -> Generate Embedding -> Store in vector DB 
 `
 ### Query Retrieval Pipeline:
 `
-Query -> Convert to chunks -> Generate Embeddingg -> get context from vectorDB  -> (context + Query) to LLM
+Query -> Convert to chunks -> Generate Embedding -> get context from vectorDB  -> (context + Query) to LLM
 `
 
 
