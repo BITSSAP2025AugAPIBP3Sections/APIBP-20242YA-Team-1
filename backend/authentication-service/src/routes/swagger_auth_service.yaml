@@ -1,0 +1,78 @@
+swagger: "2.0"
+info:
+  title: Google OAuth2 Authentication Service API
+  version: 1.0.0
+  description: >
+    This service handles Google OAuth2 authentication flow — generating the authorization URL, 
+    exchanging authorization codes for tokens, and managing login/logout sessions.
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+
+paths:
+  /auth/login:
+    get:
+      summary: Generate Google OAuth2 Authorization URL
+      description: Returns the Google OAuth2 consent screen URL where the user will log in.
+      tags:
+        - Authentication
+      responses:
+        "302":
+          description: Redirect to google login
+          
+          
+  /oauth2callback:
+    get:
+      summary: Handle Google OAuth2 Callback
+      description: Exchanges authorization code for tokens, verifies them, and redirects to frontend.
+      tags:
+        - Authentication
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Authorization code returned by Google
+      responses:
+        "302":
+          description: Redirect to frontend dashboard on successful authentication
+        "400":
+          description: Invalid credentials or token
+
+  /auth/logout:
+    post:
+      summary: Log out the authenticated user
+      description: Removes the user session and logs out the user.
+      tags:
+        - Authentication
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+
+  /:
+    get:
+      summary: Health Check
+      description: Check if the Authentication Service is running.
+      tags:
+        - Utility
+      responses:
+        "200":
+          description: Service running successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Authentication Service is running!"
+
