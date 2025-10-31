@@ -1,12 +1,19 @@
 import os
 import requests
 import json
+import logging
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s")
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_URL = os.getenv("GEMINI_URL")
+if not GEMINI_URL:
+    raise ValueError("GEMINI_URL not found in environment variables")
 
 def extract_invoice_json_from_text(extracted_text: str):
     """
@@ -14,7 +21,7 @@ def extract_invoice_json_from_text(extracted_text: str):
     """
 
     if not GEMINI_API_KEY:
-        raise ValueError("❌ GEMINI_API_KEY not found in environment variables")
+        raise ValueError("GEMINI_API_KEY not found in environment variables")
 
     headers = {
         "Content-Type": "application/json",
@@ -23,13 +30,12 @@ def extract_invoice_json_from_text(extracted_text: str):
 
     prompt = f"""
     Extract structured invoice information from the following text. 
-    Return output ONLY in JSON format with fields not extra unnecessary explanations or informations:
+    Return output ONLY in JSON format with fields not extra unnecessary explanations or information:
     {{
         "vendor_name": "",
         "invoice_number": "",
         "invoice_date": "",
         "total_amount": "",
-        "currency": "",
         "line_items": [
             {{
                 "item_description": "",
@@ -75,8 +81,8 @@ def extract_invoice_json_from_text(extracted_text: str):
             raise ValueError("Invalid JSON returned by Gemini API")
 
     except requests.exceptions.RequestException as e:
-        print(f"Gemini API request failed: {e}")
+        logging.error(f"Gemini API request failed: {e}")
         return {"error": str(e)}
     except Exception as e:
-        print(f"Error while parsing Gemini response: {e}")
+        logging.error(f"Error while parsing Gemini response: {e}")
         return {"error": str(e)}

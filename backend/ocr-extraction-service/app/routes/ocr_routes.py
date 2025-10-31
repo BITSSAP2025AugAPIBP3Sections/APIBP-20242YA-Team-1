@@ -9,10 +9,19 @@ def extract_json_from_text(text: str):
     """
     Convert extracted PDF text into structured invoice JSON using Gemini API.
     """
+    # Input validation: check for empty or whitespace-only text
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Input text is empty.")
+
     try:
         result = extract_invoice_json_from_text(text)
         if "error" in result:
-            raise HTTPException(status_code=500, detail=result["error"])
+            error_msg = result["error"]
+
+            if "invalid" in error_msg.lower() or "empty" in error_msg.lower() or "bad request" in error_msg.lower():
+                raise HTTPException(status_code=400, detail=error_msg)
+            else:
+                raise HTTPException(status_code=500, detail=error_msg)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
