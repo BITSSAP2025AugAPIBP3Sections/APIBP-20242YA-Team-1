@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from app.core.loader import VendorDataLoader
 from app.core.embedder import EmbeddingService
 from app.core.retriever import VectorDatabase
@@ -130,25 +130,3 @@ class VendorKnowledgeOrchestrator:
                 "sources": [],
                 "context_text": "",
             }
-
-  
-    query_lower = query.lower()
-    for vendor in known_vendors:
-        if vendor.lower() in query_lower:
-            return vendor
-    if llm_service and known_vendors:
-        prompt = (
-            "Given this user question: '" + query + "'\n"
-            + "Which vendor from the following list does it most likely refer to?\n"
-            + ", ".join(known_vendors) + "\n"
-            + "Return exactly one vendor name from the list or 'None' if unsure."
-        )
-        try:
-            response_text = llm_service.quick(prompt, system="Vendor name disambiguation")
-            vendor_guess = response_text.strip()
-            for vendor in known_vendors:
-                if vendor.lower() in vendor_guess.lower():
-                    return vendor
-        except Exception as e:
-            print(f"LLM vendor detection failed: {e}")
-    return None
