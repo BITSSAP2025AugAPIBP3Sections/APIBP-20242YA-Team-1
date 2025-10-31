@@ -86,7 +86,14 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-
+### Environment Setup
+Create a `.env` file (if customizing):
+```env
+GEMINI_MODEL_NAME=gemini-2.5-flash 
+GOOGLE_GEMINI_API_KEY=your_api_key_here
+VECTORDB_PERSIST_DIRECTORY=data/vectordb
+VENDOR_DATA_DIRECTORY=sample-data
+```
 
 ### Running the Service
 ```bash
