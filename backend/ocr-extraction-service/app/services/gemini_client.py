@@ -21,7 +21,7 @@ def extract_invoice_json_from_text(extracted_text: str):
     """
 
     if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY not found in environment variables")
+        return {"error": "GEMINI_API_KEY not found in environment variables"}
 
     headers = {
         "Content-Type": "application/json",
@@ -66,7 +66,7 @@ def extract_invoice_json_from_text(extracted_text: str):
         # Safely extract the model output
         model_output = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
         if not model_output:
-            raise ValueError("Empty response from Gemini API")
+            return {"error": "Empty response from Gemini API"}
 
         # Try parsing as JSON
         try:
@@ -78,7 +78,7 @@ def extract_invoice_json_from_text(extracted_text: str):
             end = model_output.rfind("}")
             if start != -1 and end != -1:
                 return json.loads(model_output[start:end + 1])
-            raise ValueError("Invalid JSON returned by Gemini API")
+            return {"error": "Invalid JSON returned by Gemini API"}
 
     except requests.exceptions.RequestException as e:
         logging.error(f"Gemini API request failed: {e}")

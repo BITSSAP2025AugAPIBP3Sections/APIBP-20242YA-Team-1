@@ -16,5 +16,8 @@ async def extract_text(file: UploadFile = File(...)):
         if not text.strip():
             raise HTTPException(status_code=400, detail="No text extracted from the PDF.")
         return {"text": text.strip()}
+    except HTTPException as e:
+        raise e
     except Exception as e:
+        # Catch-all for unexpected errors
         raise HTTPException(status_code=500, detail=f"OCR extraction failed: {str(e)}")
