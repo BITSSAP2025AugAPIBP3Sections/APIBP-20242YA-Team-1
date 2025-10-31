@@ -131,7 +131,101 @@ class VendorKnowledgeOrchestrator:
                 "context_text": "",
             }
 
-  
+    # New answer_query method used by API router
+    def answer_query(self, question: str, vendor_name: str | None = None, n_results: int = 5) -> Dict[str, Any]:
+        if not vendor_name:
+            vendor_name = detect_vendor_name(question, self.vector_db.list_vendors(), self.llm_service)
+        if not vendor_name:
+            # Fallback: aggregate top chunks across all vendors instead of erroring
+            all_vendors = self.vector_db.list_vendors()
+            if not all_vendors:
+                return {"success": False, "message": "No vendors loaded", "answer": "", "sources": []}
+            query_emb = self.embedding_service.generate_single_embedding(question)
+            aggregated: List[Dict[str, Any]] = []
+            per_vendor_k = max(1, n_results // max(1, len(all_vendors)))
+            for v in all_vendors:
+                try:
+                    retrieval = self.vector_db.search_similar_filtered(query_emb, v, per_vendor_k)
+                    for doc, meta, dist in zip(retrieval["documents"], retrieval["metadatas"], retrieval["distances"]):
+                        aggregated.append({
+                            "rank": 0,  # will set after sorting
+                            "chunk_id": meta.get("chunk_id"),
+                            "vendor_name": meta.get("vendor_name"),
+                            "type": meta.get("type"),
+                            "similarity": 1 - dist,
+                            "content_excerpt": doc[:220] + ("..." if len(doc) > 220 else ""),
+                        })
+                except Exception as e:
+                    print(f"Retrieval failed for vendor {v}: {e}")
+            if not aggregated:
+                return {"success": False, "message": "No context retrieved for any vendor", "answer": "", "sources": []}
+            aggregated.sort(key=lambda x: x["similarity"], reverse=True)
+            sources = aggregated[:n_results]
+            for i, s in enumerate(sources):
+                s["rank"] = i + 1
+            context_text = "\n\n".join(
+                f"[Source {s['rank']} | {s['vendor_name']} | sim {s['similarity']:.3f}]\n{s['content_excerpt']}" for s in sources
+            )
+            rag_response = self.llm_service.generate_answer(question=question, sources=sources)
+            return {
+                "success": rag_response.get("success", False),
+                "vendor_name": None,  # Unknown / multiple
+                "question": question,
+                "answer": rag_response.get("answer", ""),
+                "sources": sources,
+                "context_text": context_text,
+                "message": rag_response.get("message", "ok"),
+                "vendor_detection": "auto-detection failed; aggregated multi-vendor context used"
+            }
+        try:
+            context = self.get_context_for_query(vendor_name=vendor_name, question=question, n_results=n_results)
+            if not context.get("success"):
+                return {"success": False, "message": context.get("message", "Context retrieval failed"), "answer": "", "sources": []}
+            rag_response = self.llm_service.generate_answer(question=question, sources=context.get("sources", []))
+            return {
+                "success": rag_response.get("success", False),
+                "vendor_name": vendor_name,
+                "question": question,
+                "answer": rag_response.get("answer", ""),
+                "sources": context.get("sources", []),
+                "context_text": context.get("context_text", ""),
+                "message": rag_response.get("message", "ok")
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Answer generation failed: {e}", "answer": "", "sources": []}
+
+    def get_vendor_summary(self, vendor_name: str) -> Dict[str, Any]:
+        try:
+            results = self.vector_db.search_by_vendor(vendor_name)
+            vendor_info = {"vendor_name": vendor_name, "total_chunks": len(results["documents"]), "invoices": [], "summary": {}}
+            for doc, metadata in zip(results["documents"], results["metadatas"]):
+                if metadata.get("type") == "invoice":
+                    vendor_info["invoices"].append({"invoice_name": metadata.get("invoice_name"), "invoice_number": metadata.get("invoice_number"), "amount": metadata.get("total_amount", 0), "date": metadata.get("date")})
+                elif metadata.get("type") == "vendor_summary":
+                    vendor_info["summary"] = {"last_updated": metadata.get("last_updated"), "total_invoices": metadata.get("invoice_count", 0), "total_amount": metadata.get("total_amount", 0)}
+            return {"success": True, "vendor_info": vendor_info}
+        except Exception as e:
+            return {"success": False, "message": f"Error getting vendor summary: {str(e)}"}
+
+    def get_system_stats(self) -> Dict[str, Any]:
+        try:
+            db_stats = self.vector_db.get_collection_stats()
+            return {"success": True, "stats": db_stats}
+        except Exception as e:
+            return {"success": False, "message": f"Error getting stats: {str(e)}"}
+
+    def reset_database(self) -> Dict[str, Any]:
+        try:
+            success = self.vector_db.delete_all()
+            return {"success": success, "message": "Database reset successfully" if success else "Failed to reset database"}
+        except Exception as e:
+            return {"success": False, "message": f"Error resetting database: {str(e)}"}
+
+    def incremental_update(self) -> Dict[str, Any]:
+        return self.process_vendor_data(incremental=True)
+
+
+def detect_vendor_name(query: str, known_vendors: List[str], llm_service: Optional[LLMService] = None) -> Optional[str]:
     query_lower = query.lower()
     for vendor in known_vendors:
         if vendor.lower() in query_lower:
