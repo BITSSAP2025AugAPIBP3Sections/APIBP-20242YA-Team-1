@@ -20,6 +20,24 @@ async def load_vendor_knowledge(
         raise HTTPException(status_code=500, detail=f"Knowledge load failed: {str(e)}")
 
 
+# Chat RAG endpoint 
+@router.get(
+    "/query",
+    summary="Query Vendor Knowledge",
+    description="Answer a question about a specific vendor using vector retrieval + LLM generation.",
+)
+async def chat_query(
+    question: str = Query(..., description="User question"),
+):
+    try:
+        result = orchestrator.answer_query(question=question)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+
+
 @router.delete(
     "/delete-context",
     summary="Clear Vector Database",
