@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import base_routes,ocr_routes
+from app.routes import base_routes, pdf_ocr_routes, text_to_json, invoice_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -20,10 +20,10 @@ app.add_middleware(
 
 # Include routers
 app.include_router(base_routes.router)
-app.include_router(ocr_routes.router)
+app.include_router(pdf_ocr_routes.router)
+app.include_router(text_to_json.router)
+app.include_router(invoice_routes.router)
+
 @app.get("/", tags=["Root"])
-async def root():
-    """
-    Root endpoint to verify service status.
-    """
-    return {"message": "Invoice OCR Service is running successfully."}
+def read_root():
+        return {"message": "Welcome to Invoice OCR + Gemini Extraction Service!"}
