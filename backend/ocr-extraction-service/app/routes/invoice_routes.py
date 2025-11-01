@@ -27,5 +27,9 @@ async def extract_invoice(file: UploadFile = File(...)):
 
         return result
 
+    except HTTPException as e:
+        # Re-raise HTTPException to preserve its status code and message
+        raise e
     except Exception as e:
+        # Catch-all for unexpected errors
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")

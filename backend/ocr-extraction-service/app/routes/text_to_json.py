@@ -23,5 +23,8 @@ def extract_json_from_text(text: str):
             else:
                 raise HTTPException(status_code=500, detail=error_msg)
         return result
+    except HTTPException as e:
+        raise e
     except Exception as e:
+        # Catch-all for unexpected errors
         raise HTTPException(status_code=500, detail=str(e))
