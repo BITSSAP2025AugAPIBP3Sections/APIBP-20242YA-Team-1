@@ -1,10 +1,9 @@
 swagger: "2.0"
 info:
-  title: Google OAuth2 Authentication Service API
-  version: 1.0.0
+  title: Google & Email/Password Authentication Service API
+  version: 1.1.0
   description: >
-    This service handles Google OAuth2 authentication flow — generating the authorization URL, 
-    exchanging authorization codes for tokens, and managing login/logout sessions.
+    This service handles Google OAuth2 authentication flow and simple email/password registration & login.
 servers:
   - url: http://localhost:5000
     description: Local development server
@@ -15,24 +14,108 @@ paths:
       summary: Generate Google OAuth2 Authorization URL
       description: Returns the Google OAuth2 consent screen URL where the user will log in.
       tags:
-        - Authentication
+        - Google OAuth
       responses:
-        "302":
-          description: Redirect to google login
-          
-          
+        "200":
+          description: Authorization URL generated
+          schema:
+            type: object
+            properties:
+              auth_url:
+                type: string
+
+  /login:
+    post:
+      summary: Login with email and password
+      tags:
+        - Email Auth
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: credentials
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+            required:
+              - email
+              - password
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              email:
+                type: string
+        "400":
+          description: Invalid credentials
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+  /register:
+    post:
+      summary: Register a new user with email, password, and username
+      tags:
+        - Email Auth
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: user
+          required: true
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+              username:
+                type: string
+            required:
+              - email
+              - password
+              - username
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              username:
+                type: string
+        "400":
+          description: Registration failed
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
   /oauth2callback:
     get:
       summary: Handle Google OAuth2 Callback
       description: Exchanges authorization code for tokens, verifies them, and redirects to frontend.
       tags:
-        - Authentication
+        - Google OAuth
       parameters:
         - name: code
           in: query
           required: true
-          schema:
-            type: string
+          type: string
           description: Authorization code returned by Google
       responses:
         "302":
@@ -45,18 +128,53 @@ paths:
       summary: Log out the authenticated user
       description: Removes the user session and logs out the user.
       tags:
-        - Authentication
+        - Utility
       responses:
         "200":
           description: Logout successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Logged out successfully"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+
+  /delete-user:
+    delete:
+      summary: Delete a user by ID
+      description: Permanently removes a user from the database.
+      tags:
+        - Email Auth
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: user
+          required: true
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+                example: 3
+            required:
+              - user_id
+      responses:
+        "200":
+          description: User deleted
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: User deleted
+        "404":
+          description: User not found
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: User not found
 
   /:
     get:
@@ -67,12 +185,40 @@ paths:
       responses:
         "200":
           description: Service running successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Authentication Service is running!"
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Authentication Service is running!"
+
+  /users:
+    get:
+      summary: List all users
+      description: Returns an array of all registered users.
+      tags:
+        - Utility
+      responses:
+        "200":
+          description: Users fetched successfully
+          schema:
+            type: object
+            properties:
+              users:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    email:
+                      type: string
+                      example: user@example.com
+                    username:
+                      type: string
+                      example: johndoe
+                    created_at:
+                      type: string
+                      example: 2025-11-03T10:15:00Z
 

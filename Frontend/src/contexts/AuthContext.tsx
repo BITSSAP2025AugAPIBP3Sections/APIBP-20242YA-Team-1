@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
 
 // Simple user shape
 export interface User {
@@ -18,7 +18,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   signOut: () => void;
-  signInWithGoogle: () => Promise<AuthResult>; // added
+  signInWithGoogle: () => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,8 +26,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 interface AuthProviderProps { children: ReactNode }
 
 // Keys for localStorage
-const LS_USERS_KEY = 'auth_users';
+const LS_USERS_KEY = 'auth_users'; // kept for backward compatibility (not used now for backend)
 const LS_SESSION_KEY = 'auth_session_user';
+const LS_ACCESS_TOKEN = 'auth_access_token';
+const LS_REFRESH_TOKEN = 'auth_refresh_token';
 
 // Helper to load users array
 function loadUsers(): Array<{ id: string; fullName: string; email: string; password: string }> {
@@ -65,16 +67,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const users = loadUsers();
-      if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-        return { success: false, error: 'Email already registered' };
+      console.log("making request to", `${AUTH_SERVICE_URL}/register`);
+      const resp = await fetch(`${AUTH_SERVICE_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, username: fullName })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        return { success: false, error: data.error || 'Registration failed' };
       }
-      const newUser = { id: crypto.randomUUID(), fullName, email, password };
-      users.push(newUser);
-      saveUsers(users);
       return { success: true };
     } catch (e) {
-      return { success: false, error: 'Failed to register' };
+      return { success: false, error: 'Network error' };
     } finally {
       setIsLoading(false);
     }
@@ -84,18 +90,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const users = loadUsers();
-      const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (!found || found.password !== password) {
-        const err = 'Invalid credentials';
+      const resp = await fetch(`${AUTH_SERVICE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const err = data.error || 'Invalid credentials';
         setError(err);
         return { success: false, error: err };
       }
-      const sessionUser: User = { id: found.id, fullName: found.fullName, email: found.email };
+      // data.message expected to contain tokens and user per backend service
+      const tokens = data.message || {};
+      if (tokens.access_token) localStorage.setItem(LS_ACCESS_TOKEN, tokens.access_token);
+      if (tokens.refresh_token) localStorage.setItem(LS_REFRESH_TOKEN, tokens.refresh_token);
+      const sessionUser: User = { id: tokens.user?.id?.toString() || '', fullName: tokens.user?.username || '', email: tokens.user?.email || email };
       localStorage.setItem(LS_SESSION_KEY, JSON.stringify(sessionUser));
       setUser(sessionUser);
       return { success: true };
-    } catch {
+    } catch (e) {
       const err = 'Login failed';
       setError(err);
       return { success: false, error: err };
@@ -127,7 +142,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
         method: "GET",
         credentials: "include", // important for sessions
       });
@@ -147,12 +162,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { success: false, error: 'Network error during Google login' };
     }
   };
-  
-  
-  
 
   const signOut = () => {
     localStorage.removeItem(LS_SESSION_KEY);
+    localStorage.removeItem(LS_ACCESS_TOKEN);
+    localStorage.removeItem(LS_REFRESH_TOKEN);
     setUser(null);
   };
 
