@@ -26,4 +26,4 @@ app.include_router(invoice_routes.router)
 
 @app.get("/", tags=["Root"])
 def read_root():
-        return {"message": "Welcome to Invoice OCR + Gemini Extraction Service!"}
+    return {"message": "Welcome to Invoice OCR + Gemini Extraction Service!"}

@@ -7,6 +7,7 @@ def extract_text_from_pdf(file: UploadFile) -> str:
     """
     Extracts text from uploaded PDF file using pdfminer.
     """
+    tmp_path = None  # Initialize tmp_path to None
     try:
         # Create a temp file to save the uploaded PDF
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -22,5 +23,5 @@ def extract_text_from_pdf(file: UploadFile) -> str:
 
     finally:
         # Clean up temporary file
-        if os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
