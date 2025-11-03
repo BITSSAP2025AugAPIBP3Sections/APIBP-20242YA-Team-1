@@ -22,7 +22,7 @@ class UserAuthService:
     # ---------- Database setup ----------
     def _get_conn(self):
         # Use check_same_thread=False to allow usage across threads (e.g. in async contexts / threaded servers)
-        return sqlite3.connect(self.db_path, check_same_thread=False)
+        return sqlite3.connect(self.db_path)
 
     def _init_db(self):
         conn = self._get_conn()
@@ -153,52 +153,26 @@ class UserAuthService:
             conn.close()
 
     def get_user_by_email(self, email: str):
-        if not email:
-            return None
-        conn = self._get_conn()
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE email = ?", (email.lower(),))
-            row = cur.fetchone()
-            if not row:
-                return None
-            return {
-                "id": row[0],
-                "email": row[1],
-                "username": row[2],
-                "google_id": row[3],
-                "auth_provider": row[4],
-            }
-        finally:
-            conn.close()
+        return self._get_user_by_field("email", email.lower() if email else None)
 
     def get_user_by_google_id(self, google_id: str):
-        if not google_id:
-            return None
-        conn = self._get_conn()
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE google_id = ?", (google_id,))
-            row = cur.fetchone()
-            if not row:
-                return None
-            return {
-                "id": row[0],
-                "email": row[1],
-                "username": row[2],
-                "google_id": row[3],
-                "auth_provider": row[4],
-            }
-        finally:
-            conn.close()
+        return self._get_user_by_field("google_id", google_id)
 
     def get_user_by_id(self, user_id: int):
-        if not user_id:
+        return self._get_user_by_field("id", user_id)
+
+    def _get_user_by_field(self, field_name: str, value):
+        """Generic user fetcher by a single field. Validates field_name to prevent SQL injection."""
+        if not value:
             return None
+        allowed = {"id", "email", "google_id"}
+        if field_name not in allowed:
+            raise ValueError(f"Unsupported field lookup: {field_name}")
         conn = self._get_conn()
         try:
             cur = conn.cursor()
-            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE id = ?", (user_id,))
+            query = f"SELECT id, email, username, google_id, auth_provider FROM users WHERE {field_name} = ?"
+            cur.execute(query, (value,))
             row = cur.fetchone()
             if not row:
                 return None

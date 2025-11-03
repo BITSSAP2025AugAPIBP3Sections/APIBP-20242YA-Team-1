@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, redirect, request
 import os
-from urllib.parse import quote
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -41,20 +40,23 @@ def callback():
 
     user = user_auth_service.upsert_google_user(email, google_id, username)
     tokens = user_auth_service.generate_tokens_for_user(user)
+    
+    cookie_secure_env = os.getenv("COOKIE_SECURE", "True")  
+    cookie_secure = cookie_secure_env.lower() in ("true", "1", "yes") 
 
     response = redirect(f"{os.getenv('FRONTEND_URL')}/dashboard")
     response.set_cookie(
         "access_token",
         tokens["access_token"],
         httponly=True,
-        secure=True,
+        secure=cookie_secure,
         samesite="Lax"
     )
     response.set_cookie(
         "refresh_token",
         tokens["refresh_token"],
         httponly=True,
-        secure=True,
+        secure=cookie_secure,
         samesite="Lax"
     )
     return response
@@ -115,8 +117,8 @@ def register():
         return jsonify({"message": "Registered successfully, but login failed"}), 201
 
     response = jsonify({"tokens": tokens, "email": email})
-    response.set_cookie("access_token", tokens["access_token"], httponly=True, secure=True, samesite="Lax")
-    response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, secure=True, samesite="Lax")
+    response.set_cookie("access_token", tokens["access_token"], httponly=True, secure=True, samesite="Lax", max_age=3600)
+    response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, secure=True, samesite="Lax", max_age=30 * 24 * 3600)
     return response, 201
 
 
