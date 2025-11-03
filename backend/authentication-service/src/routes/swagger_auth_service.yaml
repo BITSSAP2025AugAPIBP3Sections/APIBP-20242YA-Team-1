@@ -1,13 +1,18 @@
 swagger: "2.0"
 info:
   title: Google & Email/Password Authentication Service API
-  version: 1.1.0
+  version: 1.2.0
   description: >
     This service handles Google OAuth2 authentication flow and simple email/password registration & login.
-servers:
-  - url: http://localhost:5000
-    description: Local development server
+host: localhost:4001
+basePath: /
+schemes:
+  - http
 
+servers:
+  - url: http://localhost:4001
+    description: Local development server
+    
 paths:
   /auth/login:
     get:
@@ -47,21 +52,13 @@ paths:
               - password
       responses:
         "200":
-          description: Login successful
+          description: Login successful (sets httpOnly access & refresh token cookies)
           schema:
-            type: object
-            properties:
-              message:
-                type: string
-              email:
-                type: string
+            $ref: '#/definitions/EmailLoginSuccess'
         "400":
           description: Invalid credentials
           schema:
-            type: object
-            properties:
-              error:
-                type: string
+            $ref: '#/definitions/ErrorResponse'
 
   /register:
     post:
@@ -89,26 +86,18 @@ paths:
               - username
       responses:
         "201":
-          description: User registered successfully
+          description: User registered successfully. If auto-login succeeds returns tokens; otherwise returns a message.
           schema:
-            type: object
-            properties:
-              message:
-                type: string
-              username:
-                type: string
+            $ref: '#/definitions/RegisterSuccess'
         "400":
           description: Registration failed
           schema:
-            type: object
-            properties:
-              error:
-                type: string
+            $ref: '#/definitions/ErrorResponse'
 
   /oauth2callback:
     get:
       summary: Handle Google OAuth2 Callback
-      description: Exchanges authorization code for tokens, verifies them, and redirects to frontend.
+      description: Exchanges authorization code for tokens, verifies them, sets httpOnly cookies, and redirects to frontend.
       tags:
         - Google OAuth
       parameters:
@@ -119,24 +108,23 @@ paths:
           description: Authorization code returned by Google
       responses:
         "302":
-          description: Redirect to frontend dashboard on successful authentication
+          description: "Redirect to frontend dashboard on successful authentication (cookies set: access_token, refresh_token)"
         "400":
           description: Invalid credentials or token
+          schema:
+            $ref: '#/definitions/ErrorResponse'
 
   /auth/logout:
     post:
       summary: Log out the authenticated user
-      description: Removes the user session and logs out the user.
+      description: Removes auth cookies (access_token, refresh_token) and returns a message.
       tags:
         - Utility
       responses:
         "200":
           description: Logout successful
           schema:
-            type: object
-            properties:
-              message:
-                type: string
+            $ref: '#/definitions/MessageResponse'
 
   /delete-user:
     delete:
@@ -162,19 +150,11 @@ paths:
         "200":
           description: User deleted
           schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: User deleted
+            $ref: '#/definitions/MessageResponse'
         "404":
           description: User not found
           schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: User not found
+            $ref: '#/definitions/ErrorResponse'
 
   /:
     get:
@@ -186,11 +166,7 @@ paths:
         "200":
           description: Service running successfully
           schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "Authentication Service is running!"
+            $ref: '#/definitions/MessageResponse'
 
   /users:
     get:
@@ -207,18 +183,103 @@ paths:
               users:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                      example: 1
-                    email:
-                      type: string
-                      example: user@example.com
-                    username:
-                      type: string
-                      example: johndoe
-                    created_at:
-                      type: string
-                      example: 2025-11-03T10:15:00Z
+                  $ref: '#/definitions/User'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Accepts a refresh token from cookie or request body and returns new access & refresh tokens.
+      tags:
+        - Utility
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: refresh
+          required: false
+          schema:
+            type: object
+            properties:
+              refresh_token:
+                type: string
+      responses:
+        "200":
+          description: Tokens refreshed successfully (sets new access_token cookie)
+          schema:
+            $ref: '#/definitions/TokensResponse'
+        "400":
+          description: Missing refresh token
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+definitions:
+  User:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      email:
+        type: string
+        example: user@example.com
+      username:
+        type: string
+        example: johndoe
+      google_id:
+        type: string
+        example: 108976234234234234234
+      auth_provider:
+        type: string
+        example: google
+      created_at:
+        type: string
+        example: 2025-11-03T10:15:00Z
+  TokensResponse:
+    type: object
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+        example: bearer
+      user:
+        $ref: '#/definitions/User'
+  EmailLoginSuccess:
+    type: object
+    properties:
+      tokens:
+        $ref: '#/definitions/TokensResponse'
+      email:
+        type: string
+        example: user@example.com
+  RegisterSuccess:
+    type: object
+    description: Response after registration. If auto-login succeeds, tokens are present; otherwise only a message.
+    properties:
+      tokens:
+        $ref: '#/definitions/TokensResponse'
+      email:
+        type: string
+        example: user@example.com
+      message:
+        type: string
+        example: Registered successfully, but login failed
+  MessageResponse:
+    type: object
+    properties:
+      message:
+        type: string
+        example: Operation successful
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+        example: Invalid credentials
 
