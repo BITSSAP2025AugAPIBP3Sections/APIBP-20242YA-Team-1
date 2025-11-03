@@ -141,7 +141,7 @@ class UserAuthService:
 
     # ---------- JWT helper functions ----------
     def _create_access_token(self, user_id: int, email: str, username: str):
-        expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.datetime.now(datetime.timezone.utc)  + datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         payload = {
             "sub": str(user_id),
             "email": email,
@@ -152,7 +152,7 @@ class UserAuthService:
         return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     def _create_refresh_token(self, user_id: int, email: str, username: str):
-        expire = datetime.datetime.utcnow() + datetime.timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         payload = {
             "sub": str(user_id),
             "email": email,

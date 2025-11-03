@@ -23,11 +23,11 @@ def login_email():
     data = request.get_json() or {}
     email = data.get("email")
     password = data.get("password")
-    success, message = user_auth_service.authenticate(email, password)
+    success, auth_response = user_auth_service.authenticate(email, password)
     if success:
-        session["user"] = {"email": email}
-        return jsonify({"message": message, "email": email}), 200
-    return jsonify({"error": message}), 400
+        session["user"] = auth_response.get("user") if isinstance(auth_response, dict) and "user" in auth_response else {"email": email}
+        return jsonify(auth_response), 200
+    return jsonify({"error": auth_response}), 400
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -41,7 +41,7 @@ def register():
         auth_success, tokens = user_auth_service.authenticate(email, password)
         if auth_success:
             session["user"] = tokens.get("user")
-            return jsonify({"message": tokens, "email": email}), 201
+            return jsonify({"tokens": tokens, "email": email}), 201
         # Fallback: registration ok but auth failed unexpectedly
         return jsonify({"message": message, "username": username, "warning": "Registered but auto-login failed"}), 201
     return jsonify({"error": message}), 400
