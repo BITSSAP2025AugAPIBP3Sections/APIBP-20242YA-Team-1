@@ -1,7 +1,10 @@
-from flask import Blueprint, jsonify, redirect, request, session
+from flask import Blueprint, jsonify, redirect, request
 import os
+from urllib.parse import quote
+from dotenv import load_dotenv
 
-# Prefer relative imports when executed as package, fallback for direct script execution
+load_dotenv()
+
 try:
     from ..services.google_auth_service import GoogleAuthService
     from ..services.user_auth_service import UserAuthService
@@ -18,53 +21,104 @@ def login():
     auth_url = google_auth_service.get_authorization_url()
     return jsonify({"auth_url": auth_url})
 
+@auth_bp.route("/oauth2callback")
+def callback():
+    code = request.args.get("code")
+    credentials = google_auth_service.exchange_code_for_token(code)
+    if not credentials:
+        return jsonify({"error": "Invalid credentials"}), 400
+
+    token_info = google_auth_service.verify_token(credentials.id_token)
+    if not token_info:
+        return jsonify({"error": "Invalid token"}), 400
+
+    email = token_info.get("email")
+    google_id = token_info.get("sub")  # Google's unique user ID
+    username = token_info.get("name") or token_info.get("given_name") or (email.split("@")[0] if email else None)
+
+    if not email or not google_id:
+        return jsonify({"error": "Incomplete token data"}), 400
+
+    user = user_auth_service.upsert_google_user(email, google_id, username)
+    tokens = user_auth_service.generate_tokens_for_user(user)
+
+    response = redirect(f"{os.getenv('FRONTEND_URL')}/dashboard")
+    response.set_cookie(
+        "access_token",
+        tokens["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="Lax"
+    )
+    response.set_cookie(
+        "refresh_token",
+        tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="Lax"
+    )
+    return response
+
+
+@auth_bp.route("/auth/logout", methods=["POST"])
+def logout():
+    response = jsonify({"message": "Logged out successfully"})
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
+
 @auth_bp.route("/login", methods=["POST"])
 def login_email():
     data = request.get_json() or {}
     email = data.get("email")
     password = data.get("password")
+
     success, auth_response = user_auth_service.authenticate(email, password)
-    if success:
-        session["user"] = auth_response.get("user") if isinstance(auth_response, dict) and "user" in auth_response else {"email": email}
-        return jsonify(auth_response), 200
-    return jsonify({"error": auth_response}), 400
+    if not success:
+        return jsonify({"error": auth_response}), 400
+
+    # authenticate now returns the token payload directly (no nested 'tokens' key)
+    tokens = auth_response  # contains access_token, refresh_token, token_type, user
+    response = jsonify({"tokens": tokens, "email": email})
+    response.set_cookie(
+        "access_token",
+        tokens["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=3600
+    )
+    response.set_cookie(
+        "refresh_token",
+        tokens["refresh_token"],
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=30 * 24 * 3600
+    )
+    return response, 200
+
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
     email = data.get("email")
     password = data.get("password")
-    username = data.get("username")  # new field
+    username = data.get("username")
+
     success, message = user_auth_service.register_user(email, password, username)
-    if success:
-        # Automatically authenticate to issue tokens
-        auth_success, tokens = user_auth_service.authenticate(email, password)
-        if auth_success:
-            session["user"] = tokens.get("user")
-            return jsonify({"tokens": tokens, "email": email}), 201
-        # Fallback: registration ok but auth failed unexpectedly
-        return jsonify({"message": message, "username": username, "warning": "Registered but auto-login failed"}), 201
-    return jsonify({"error": message}), 400
+    if not success:
+        return jsonify({"error": message}), 400
 
-@auth_bp.route("/oauth2callback")
-def callback():
-    code = request.args.get("code")
-    credentials = google_auth_service.exchange_code_for_token(code)
+    auth_success, tokens = user_auth_service.authenticate(email, password)
+    if not auth_success:
+        return jsonify({"message": "Registered successfully, but login failed"}), 201
 
-    if not credentials:
-        return jsonify({"error": "Invalid credentials"}), 400
+    response = jsonify({"tokens": tokens, "email": email})
+    response.set_cookie("access_token", tokens["access_token"], httponly=True, secure=True, samesite="Lax")
+    response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, secure=True, samesite="Lax")
+    return response, 201
 
-    token_info = google_auth_service.verify_token(credentials.id_token)
-    if token_info:
-        session["user"] = token_info
-        return redirect(f"{os.getenv('FRONTEND_URL')}/dashboard")
-    else:
-        return jsonify({"error": "Invalid token"}), 400
-
-@auth_bp.route("/auth/logout", methods=["POST"])
-def logout():
-    session.pop("user", None)
-    return jsonify({"message": "Logged out successfully"})
 
 @auth_bp.route("/delete-user", methods=["DELETE"]) 
 def delete_user():
@@ -79,3 +133,27 @@ def delete_user():
 def list_users():
     users = user_auth_service.list_users()
     return jsonify({"users": users}), 200
+
+@auth_bp.route("/auth/refresh", methods=["POST"])
+def refresh():
+    refresh_token = (
+        request.cookies.get("refresh_token")
+        or (request.get_json() or {}).get("refresh_token")
+    )
+    if not refresh_token:
+        return jsonify({"error": "Missing refresh token"}), 400
+    
+    success, result = user_auth_service.refresh_tokens(refresh_token)
+    if not success:
+        return jsonify({"error": result}), 401
+    
+    response = jsonify(result)
+    response.set_cookie(
+        "access_token",
+        result["access_token"],
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=3600
+    )
+    return response, 200

@@ -12,7 +12,6 @@ class GoogleAuthService:
         self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
         self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 
-        # ✅ Build absolute path dynamically
         base_dir = os.path.dirname(os.path.abspath(__file__))
         client_secret_path = os.path.join(base_dir, "..", "client_secret.json")
 

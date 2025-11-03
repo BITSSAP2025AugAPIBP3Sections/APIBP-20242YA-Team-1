@@ -8,18 +8,21 @@ from utils.config import (
     JWT_ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
-    USER_DB_PATH,
 )
 
 
 class UserAuthService:
     def __init__(self, db_path=None):
-        self.db_path = db_path or USER_DB_PATH or os.path.join(os.path.dirname(__file__), "users.db")
+        # Production path may be provided via environment variable AUTH_DB_PATH; falls back to local file for dev.
+        env_path = os.getenv("AUTH_DB_PATH")
+        default_dev_path = os.path.join(os.path.dirname(__file__), "users.db")
+        self.db_path = db_path or env_path or default_dev_path
         self._init_db()
 
     # ---------- Database setup ----------
     def _get_conn(self):
-        return sqlite3.connect(self.db_path)
+        # Use check_same_thread=False to allow usage across threads (e.g. in async contexts / threaded servers)
+        return sqlite3.connect(self.db_path, check_same_thread=False)
 
     def _init_db(self):
         conn = self._get_conn()
@@ -30,16 +33,26 @@ class UserAuthService:
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     email TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    username TEXT,
+                    password_hash TEXT,
+                    google_id TEXT,
+                    auth_provider TEXT DEFAULT 'local',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
-            # Add username column if missing (non-destructive)
+            # Ensure new columns exist if table was created previously with older schema
             cur.execute("PRAGMA table_info(users)")
             cols = [r[1] for r in cur.fetchall()]
             if "username" not in cols:
                 cur.execute("ALTER TABLE users ADD COLUMN username TEXT")
+            if "google_id" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN google_id TEXT")
+            if "auth_provider" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local'")
+            if "updated_at" not in cols:
+                cur.execute("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
             conn.commit()
         finally:
             conn.close()
@@ -138,6 +151,135 @@ class UserAuthService:
             ]
         finally:
             conn.close()
+
+    def get_user_by_email(self, email: str):
+        if not email:
+            return None
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE email = ?", (email.lower(),))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "email": row[1],
+                "username": row[2],
+                "google_id": row[3],
+                "auth_provider": row[4],
+            }
+        finally:
+            conn.close()
+
+    def get_user_by_google_id(self, google_id: str):
+        if not google_id:
+            return None
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE google_id = ?", (google_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "email": row[1],
+                "username": row[2],
+                "google_id": row[3],
+                "auth_provider": row[4],
+            }
+        finally:
+            conn.close()
+
+    def get_user_by_id(self, user_id: int):
+        if not user_id:
+            return None
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE id = ?", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "email": row[1],
+                "username": row[2],
+                "google_id": row[3],
+                "auth_provider": row[4],
+            }
+        finally:
+            conn.close()
+
+    def upsert_google_user(self, email: str, google_id: str, username: str):
+        """Create a new Google user if not exists; return user dict."""
+        # Try by google_id first
+        existing = self.get_user_by_google_id(google_id)
+        if existing:
+            return existing
+        # Fallback by email (user may have registered locally earlier)
+        by_email = self.get_user_by_email(email)
+        if by_email:
+            # If existing local user, upgrade with google_id + provider
+            conn = self._get_conn()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE users SET google_id = ?, auth_provider = 'google', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (google_id, by_email["id"]),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            return self.get_user_by_email(email)
+        # Create new google user (no password)
+        conn = self._get_conn()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO users (email, username, google_id, auth_provider) VALUES (?, ?, ?, 'google')",
+                (email.lower(), username, google_id),
+            )
+            conn.commit()
+            cur.execute("SELECT id, email, username, google_id, auth_provider FROM users WHERE google_id = ?", (google_id,))
+            row = cur.fetchone()
+            return {
+                "id": row[0],
+                "email": row[1],
+                "username": row[2],
+                "google_id": row[3],
+                "auth_provider": row[4],
+            }
+        finally:
+            conn.close()
+
+    def generate_tokens_for_user(self, user: dict):
+        access = self._create_access_token(user["id"], user["email"], user.get("username"))
+        refresh = self._create_refresh_token(user["id"], user["email"], user.get("username"))
+        return {"access_token": access, "refresh_token": refresh, "token_type": "bearer", "user": user}
+
+    def refresh_tokens(self, refresh_token: str):
+        valid, payload = self.verify_token(refresh_token)
+        if not valid:
+            return False, payload  # error message
+        if payload.get("type") != "refresh":
+            return False, "Invalid token type"
+        user_id = int(payload.get("sub"))
+        email = payload.get("email")
+        username = payload.get("username")
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False, "User not found"
+        new_access = self._create_access_token(user_id, email, username)
+        # Optionally rotate refresh token (simple strategy: always rotate)
+        new_refresh = self._create_refresh_token(user_id, email, username)
+        return True, {
+            "access_token": new_access,
+            "refresh_token": new_refresh,
+            "token_type": "bearer",
+            "user": user,
+        }
 
     # ---------- JWT helper functions ----------
     def _create_access_token(self, user_id: int, email: str, username: str):
