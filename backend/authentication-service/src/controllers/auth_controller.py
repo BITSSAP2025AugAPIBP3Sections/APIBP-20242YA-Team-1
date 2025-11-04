@@ -44,7 +44,7 @@ def callback():
     cookie_secure_env = os.getenv("COOKIE_SECURE", "True")  
     cookie_secure = cookie_secure_env.lower() in ("true", "1", "yes") 
 
-    response = redirect(f"{os.getenv('FRONTEND_URL')}/dashboard")
+    response = redirect(f"{os.getenv('FRONTEND_URL')}/")
     response.set_cookie(
         "access_token",
         tokens["access_token"],
