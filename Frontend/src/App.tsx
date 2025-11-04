@@ -50,6 +50,10 @@ const AppRoutes = () => {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/settings" element={<Settings />} />
+                {/* Redirect authenticated users away from auth pages */}
+                <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route path="/register" element={<Navigate to="/" replace />} />
+                <Route path="/reset" element={<Navigate to="/" replace />} />
                 {/* Add other protected routes here */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

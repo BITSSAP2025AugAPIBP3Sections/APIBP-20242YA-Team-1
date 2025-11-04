@@ -4,7 +4,6 @@ import {
   Building2,
   BarChart3,
   Settings,
-  MessageSquare,
 } from "lucide-react";
 import {
   Sidebar,
