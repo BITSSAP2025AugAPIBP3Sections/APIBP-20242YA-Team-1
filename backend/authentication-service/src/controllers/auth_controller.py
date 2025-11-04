@@ -85,6 +85,7 @@ def login_email():
         "user": {
             "id": tokens["user"]["id"],
             "email": email,
+            "username": tokens["user"].get("username")
         },
         "message": "Logged in successfully"
     })

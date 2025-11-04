@@ -4,7 +4,7 @@ const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
 // Simple user shape
 export interface User {
   id: string;
-  fullName: string;
+  username: string;
   email: string;
 }
 
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         const data = await resp.json();
         if (data.isAuthenticated && data.user) {
-          setUser(data.user);
+          setUser(data.user)
         } else {
           setUser(null);
         }
@@ -70,11 +70,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (data.user) {
         setUser(data.user);
-      } else {
-        // fallback: fetch /auth/me if backend doesn’t return user directly
-        const userResp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, { credentials: 'include' });
-        const userData = await userResp.json();
-        if (userData.user) setUser(userData.user);
       }
 
       return { success: true };
