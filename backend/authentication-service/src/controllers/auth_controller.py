@@ -81,7 +81,13 @@ def login_email():
 
     # authenticate now returns the token payload directly (no nested 'tokens' key)
     tokens = auth_response  # contains access_token, refresh_token, token_type, user
-    response = jsonify({"tokens": tokens, "email": email})
+    response = jsonify({
+        "user": {
+            "id": tokens["user"]["id"],
+            "email": email,
+        },
+        "message": "Logged in successfully"
+    })
     response.set_cookie(
         "access_token",
         tokens["access_token"],
@@ -116,7 +122,14 @@ def register():
     if not auth_success:
         return jsonify({"message": "Registered successfully, but login failed"}), 201
 
-    response = jsonify({"tokens": tokens, "email": email})
+    response = jsonify({
+        "user": {
+            "id": tokens["user"]["id"],
+            "email": email,
+            "username": username
+        },
+        "message": "Registered successfully"
+    })
     response.set_cookie("access_token", tokens["access_token"], httponly=True, secure=True, samesite="Lax", max_age=3600)
     response.set_cookie("refresh_token", tokens["refresh_token"], httponly=True, secure=True, samesite="Lax", max_age=30 * 24 * 3600)
     return response, 201
@@ -159,3 +172,32 @@ def refresh():
         max_age=3600
     )
     return response, 200
+
+@auth_bp.route("/auth/me", methods=["GET"])
+def get_current_user():
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        return jsonify({"isAuthenticated": False, "user": None}), 200
+
+    # Use instance method correctly
+    valid, payload = user_auth_service.verify_token(access_token)
+    if not valid or payload.get("type") != "access":
+        return jsonify({"isAuthenticated": False, "user": None}), 200
+
+    try:
+        user_id = int(payload.get("sub"))
+    except (TypeError, ValueError):
+        return jsonify({"isAuthenticated": False, "user": None}), 200
+
+    user = user_auth_service.get_user_by_id(user_id)
+    if not user:
+        return jsonify({"isAuthenticated": False, "user": None}), 200
+
+    return jsonify({
+        "isAuthenticated": True,
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "email": user["email"],
+        }
+    }), 200

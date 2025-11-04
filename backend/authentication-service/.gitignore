@@ -4,3 +4,4 @@ venv/
 users.db
 __pycache__/
 *.pyc
+client_secrets.json

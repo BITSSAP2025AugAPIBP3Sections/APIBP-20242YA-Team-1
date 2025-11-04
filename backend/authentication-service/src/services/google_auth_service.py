@@ -12,8 +12,9 @@ class GoogleAuthService:
         self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
         self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        client_secret_path = os.path.join(base_dir, "..", "client_secret.json")
+        service_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.abspath(os.path.join(service_dir, "..", ".."))
+        client_secret_path = os.path.join(root_dir, "client_secret.json")
 
         if not os.path.exists(client_secret_path):
             raise FileNotFoundError(f"client_secret.json not found at: {client_secret_path}")

@@ -25,59 +25,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps { children: ReactNode }
 
-// Keys for localStorage
-const LS_USERS_KEY = 'auth_users'; // kept for backward compatibility (not used now for backend)
-const LS_SESSION_KEY = 'auth_session_user';
-const LS_ACCESS_TOKEN = 'auth_access_token';
-const LS_REFRESH_TOKEN = 'auth_refresh_token';
-
-// Helper to load users array
-function loadUsers(): Array<{ id: string; fullName: string; email: string; password: string }> {
-  try {
-    const raw = localStorage.getItem(LS_USERS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: Array<{ id: string; fullName: string; email: string; password: string }>) {
-  localStorage.setItem(LS_USERS_KEY, JSON.stringify(users));
-}
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {  
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Restore session on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_SESSION_KEY);
-      if (raw) setUser(JSON.parse(raw));
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
+    const fetchUser = async () => {
+      try {
+        const resp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, {
+          credentials: 'include', // sends cookies
+        });
+        const data = await resp.json();
+        if (data.isAuthenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } catch (e) {
+        console.error('Session check failed:', e);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUser();
   }, []);
 
   const signUp: AuthContextType['signUp'] = async (email, password, fullName) => {
     setIsLoading(true);
     setError(null);
     try {
-      console.log("making request to", `${AUTH_SERVICE_URL}/register`);
       const resp = await fetch(`${AUTH_SERVICE_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email, password, username: fullName })
       });
+
       const data = await resp.json();
       if (!resp.ok) {
         return { success: false, error: data.error || 'Registration failed' };
       }
+
+      if (data.user) {
+        setUser(data.user);
+      } else {
+        // fallback: fetch /auth/me if backend doesn’t return user directly
+        const userResp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, { credentials: 'include' });
+        const userData = await userResp.json();
+        if (userData.user) setUser(userData.user);
+      }
+
       return { success: true };
     } catch (e) {
       return { success: false, error: 'Network error' };
@@ -102,13 +101,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setError(err);
         return { success: false, error: err };
       }
-      // data.message expected to contain tokens and user per backend service
-      const tokens = data.message || {};
-      if (tokens.access_token) localStorage.setItem(LS_ACCESS_TOKEN, tokens.access_token);
-      if (tokens.refresh_token) localStorage.setItem(LS_REFRESH_TOKEN, tokens.refresh_token);
-      const sessionUser: User = { id: tokens.user?.id?.toString() || '', fullName: tokens.user?.username || '', email: tokens.user?.email || email };
-      localStorage.setItem(LS_SESSION_KEY, JSON.stringify(sessionUser));
-      setUser(sessionUser);
+
+      if (data.user) {
+        setUser(data.user);
+      } 
+
       return { success: true };
     } catch (e) {
       const err = 'Login failed';
@@ -119,36 +116,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const resetPassword: AuthContextType['resetPassword'] = async (email) => {
-    setIsLoading(true);
-    setError(null);
-    return new Promise<AuthResult>(resolve => {
-      setTimeout(() => {
-        const users = loadUsers();
-        const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-        if (!exists) {
-          const err = 'Email not found';
-          setError(err);
-          setIsLoading(false);
-          resolve({ success: false, error: err });
-          return;
-        }
-        // Fake success
-        setIsLoading(false);
-        resolve({ success: true });
-      }, 800);
-    });
-  };
-
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
       const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
-        method: "GET",
-        credentials: "include", // important for sessions
+        credentials: "include",
       });
   
       const data = await response.json();
-      console.log('Google OAuth URL response:', data); // Debug log
   
       if (data.auth_url) {
         // redirect to Google's OAuth URL
@@ -163,11 +137,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signOut = () => {
-    localStorage.removeItem(LS_SESSION_KEY);
-    localStorage.removeItem(LS_ACCESS_TOKEN);
-    localStorage.removeItem(LS_REFRESH_TOKEN);
-    setUser(null);
+  const resetPassword: AuthContextType['resetPassword'] = async (email) => {
+    return { success: true }; 
+  };
+
+  const signOut = async () => {
+    try {
+      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include', 
+      });
+    } catch (e) {
+      console.warn('Logout request failed:', e);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
