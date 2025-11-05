@@ -20,11 +20,10 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
 
 const mainMenuItems = [
@@ -145,8 +144,8 @@ export function AppSidebar() {
                 {(user?.username?.[0] || user?.email?.[0] || 'U').toUpperCase()}
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium truncate">{user?.username || 'Username'}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email || 'user@gmail.com'}</p>
+                <p className="text-sm font-medium truncate">{user?.username}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </button>
@@ -163,8 +162,8 @@ export function AppSidebar() {
                 {(user?.username?.[0] || user?.email?.[0] || 'U').toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{user?.username || 'Username'}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email || 'user@gmail.com'}</p>
+                <p className="text-sm font-semibold truncate">{user?.username}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
             <div className="space-y-1">
