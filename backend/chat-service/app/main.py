@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import chat
 import uvicorn
-from app.routes.graphql import graphql_router  
+from app.routes.graphql import graphql_router
 
 
 app = FastAPI(
@@ -16,7 +16,7 @@ app = FastAPI(
         "- **URL:** `/graphql`\n"
         "- Supports queries and mutations for chat interactions.\n"
     ),
-    version="1.1.0", 
+    version="1.1.0",
 )
 
 app.add_middleware(

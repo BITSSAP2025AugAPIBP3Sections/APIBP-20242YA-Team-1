@@ -1,15 +1,18 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from app.core.orchestrator import VendorKnowledgeOrchestrator
 
 # Unified router (no extra prefix to keep paths explicit)
 router = APIRouter(tags=["VendorIQ RAG Service"])
 
-orchestrator = VendorKnowledgeOrchestrator()
+# Provide a fresh orchestrator per request (avoid shared mutable state)
+def get_orchestrator():
+    return VendorKnowledgeOrchestrator()
 
 # Load / build knowledge base (cron/internal use)
 @router.post("/knowledge/load", summary="Load & Index Vendor Knowledge", description="Load vendor data, generate embeddings, store in vector DB")
 async def load_vendor_knowledge(
-    incremental: bool = Query(False, description="Only index new chunks if true")
+    incremental: bool = Query(False, description="Only index new chunks if true"),
+    orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
 ):
     try:
         result = orchestrator.process_vendor_data(incremental=incremental)
@@ -28,6 +31,7 @@ async def load_vendor_knowledge(
 )
 async def chat_query(
     question: str = Query(..., description="User question"),
+    orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
 ):
     try:
         result = orchestrator.answer_query(question=question)
@@ -43,7 +47,7 @@ async def chat_query(
     summary="Clear Vector Database",
     description="Delete all stored embeddings and reset the vendor knowledge database.",
 )
-async def delete_context():
+async def delete_context(orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator)):
     try:
         result = orchestrator.reset_database()
         if not result.get("success"):
@@ -55,7 +59,7 @@ async def delete_context():
 
 # Health
 @router.get("/health", summary="Health Check", description="Service + vector DB status")
-async def health_check():
+async def health_check(orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator)):
     try:
         stats = orchestrator.get_system_stats()
         return {
