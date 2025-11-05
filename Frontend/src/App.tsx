@@ -1,6 +1,6 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "./pages/NotFound";
@@ -9,16 +9,11 @@ import Register from './pages/Register';
 import Reset from './pages/Reset'; 
 import { AuthProvider, useAuth } from "./contexts/AuthContext"; 
 import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "./components/AppSidebar";
-import { ThemeToggle } from "./components/ThemeToggle";
+import ProtectedRoutes from "./components/ProtectedRoutes";
 
 const queryClient = new QueryClient();
 
-// Component to handle routes with sidebar for authenticated users
+// Component to handle routes based on authentication status
 const AppRoutes = () => {
   const { user } = useAuth();
   
@@ -35,34 +30,8 @@ const AppRoutes = () => {
     );
   }
 
-  // For authenticated users, wrap routes with sidebar
-  return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between border-b p-5">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-auto">
-            <div className="max-w-7xl mx-auto p-6">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/settings" element={<Settings />} />
-                {/* Redirect authenticated users away from auth pages */}
-                <Route path="/login" element={<Navigate to="/" replace />} />
-                <Route path="/register" element={<Navigate to="/" replace />} />
-                <Route path="/reset" element={<Navigate to="/" replace />} />
-                {/* Add other protected routes here */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
+  // For authenticated users, use the ProtectedRoutes component
+  return <ProtectedRoutes />;
 };
 
 const App = () => (

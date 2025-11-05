@@ -18,6 +18,8 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "react-router-dom";
+import { useSidebar } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mainMenuItems = [
   {
@@ -52,6 +54,13 @@ const secondaryMenuItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { user } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const handleNavClick = () => {
+  if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar>
@@ -78,7 +87,7 @@ export function AppSidebar() {
                     isActive={location.pathname === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleNavClick}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -100,7 +109,7 @@ export function AppSidebar() {
                     isActive={location.pathname === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleNavClick}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
@@ -114,11 +123,11 @@ export function AppSidebar() {
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-            U
+            {user?.username.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Username</p>
-            <p className="text-xs text-muted-foreground truncate">User@gmail.com</p>
+            <p className="text-sm font-medium truncate">{user?.username}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
       </SidebarFooter>
