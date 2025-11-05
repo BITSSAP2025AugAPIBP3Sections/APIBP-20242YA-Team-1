@@ -11,6 +11,7 @@ AI-driven chatbot microservice for vendor and invoice analysis, providing intell
 - **CORS Configuration** - Cross-origin resource sharing enabled for frontend integration
 - **Health Check Endpoint** - Service monitoring for embedding and vector DB. Return collections and chunks counts from vector DB
 - **Environment Configuration** - Setup for API keys and Google credentials
+- **GraphQL API** - Strawberry GraphQL endpoint at `/graphql` with queries & mutations for knowledge base management and chat
 
 - **OpenAPI Documentation** - Auto-generated API docs with proper tagging
 - **AI Integration** - Gemini 2.5 Flash integration & RAG workflow
@@ -39,11 +40,11 @@ Load vendor JSON -> Convert to chunks -> Generate Embedding -> Store in vector D
 Query -> Convert to chunks -> Generate Embedding -> get context from vectorDB  -> (context + Query) to LLM
 `
 
-
 ---
 
 ## 🛠 Tech Stack
 - **FastAPI** - Modern Python web framework
+- **Strawberry GraphQL** - Code-first GraphQL schema
 - **(Optional) LangChain** - Future orchestration needs
 - **Gemini 2.5 Flash** - Hosted multimodal instruction model
 - **sentence-transformers** - Embedding generation
@@ -57,12 +58,12 @@ Query -> Convert to chunks -> Generate Embedding -> get context from vectorDB  -
 ## 📁 Project Structure
 ```
 app/
-├── main.py          # FastAPI application and routes
-├── config.py        # Environment variables and settings
-├── models/          # Data models (Pydantic schemas)
-├── services/        # External integrations (AI, Sheets)
-├── routes/          # API route handlers
-└── core/            # Main Logic (LLM, embeddings, retrieval)
+├── main.py              # FastAPI application and route mounting (REST + GraphQL)
+├── config.py            # Environment variables and settings
+├── core/                # Main logic (LLM, embeddings, retrieval, orchestrator)
+├── routes/              # REST API route handlers (prefixed with /api)
+├── graphql/             # Strawberry GraphQL schema & router
+├── models/              # Data / Pydantic schemas
 ```
 Note: Run `source clean_cache.sh` to clean up the cached file from this folder
 ---
@@ -102,22 +103,90 @@ uvicorn app.main:app --host 0.0.0.0 --port 4005 --reload
 ```
 
 The service will be available at:
-- **API**: `http://localhost:4005`
-- **Documentation**: `http://localhost:4005/docs`
-- **Health Check**: `http://localhost:4005/health`
+- **Base**: `http://localhost:4005`
+- **REST Docs (Swagger)**: `http://localhost:4005/docs`
+- **GraphQL Playground**: `http://localhost:4005/graphql`
+- **Health (REST)**: `http://localhost:4005/api/health`
 
 ---
 
-## 📋 API Endpoints
+## 📋 REST API Endpoints (Prefix: /api)
 
 ### Health & Monitoring
-- `GET /health` - Health check and service status
+- `GET /api/health` - Health check and service status
 
 ### Chatbot
-- `GET /chat?query={message}` - Send message to chatbot (Gemini-backed RAG)
+- `GET /api/chat/query?question=...` - Ask a question (RAG over vendor knowledge)
+- `POST /api/knowledge/load` - Load or refresh vendor knowledge base
+- `DELETE /api/delete-context` - Clear knowledge / vector DB (if implemented)
 
-### Data Integration
-- `GET /sheets/{sheet_id}` - Read Google Sheets data (placeholder implementation)
+---
+
+## 🧬 GraphQL API
+
+Endpoint: `POST /graphql`
+Playground UI: Open the endpoint in a browser; Strawberry serves an interactive explorer.
+
+### Schema (high level)
+```
+Query {
+  vendorQuery(question: String!): String
+  health: String
+}
+
+Mutation {
+  loadVendorKnowledge(incremental: Boolean = false): String
+  clearKnowledgeBase: String
+}
+```
+
+### Example Queries
+```graphql
+query HealthCheck {
+  health
+}
+
+query AskVendor {
+  vendorQuery(question: "What is the total spend for vendor A?")
+}
+```
+
+### Example Mutations
+```graphql
+mutation LoadAll {
+  loadVendorKnowledge(incremental: false)
+}
+
+mutation ClearKB {
+  clearKnowledgeBase
+}
+```
+
+### Curl Examples
+```bash
+# Health (GraphQL)
+curl -X POST http://localhost:4005/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "{ health }"}'
+
+# Ask a question
+curl -X POST http://localhost:4005/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "{ vendorQuery(question: \\\"List key vendors\\\") }"}'
+
+# Load knowledge base
+curl -X POST http://localhost:4005/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "mutation { loadVendorKnowledge(incremental: false) }"}'
+```
+
+### When to Use REST vs GraphQL
+| Use Case | REST | GraphQL |
+|----------|------|---------|
+| Simple health or load operations | ✅ | ✅ |
+| Ad-hoc question answering | ✅ (query param) | ✅ (more flexible) |
+| Batch queries in one round trip | ❌ | ✅ |
+| Schema introspection/exploration | ❌ | ✅ |
 
 ---
 
@@ -144,20 +213,23 @@ The service will be available at:
 ## 🔧 Configuration
 
 Key files:
-- `requirements.txt` - Python dependencies (FastAPI, Gemini SDK, embeddings, vector DB)
+- `requirements.txt` - Python dependencies (FastAPI, Strawberry, Gemini SDK, embeddings, vector DB)
 - `app/config.py` - Environment variable management and settings
+- `app/graphql/` - GraphQL schema & router
+- `app/core/orchestrator.py` - Central coordination logic
 
 ---
 
 ## 🤝 Contributing
 
 When working on the chat-service:
-1. Follow existing FastAPI patterns for route organization
+1. Follow existing FastAPI and GraphQL patterns (Strawberry schema in `app/graphql`)
 2. Add proper type hints and documentation strings
-3. Include appropriate API tags for OpenAPI documentation
-4. Test endpoints using the auto-generated docs at `/docs`
-5. Ensure proper error handling and response models
-6. Keep prompts concise and grounded only in retrieved context
+3. Keep REST endpoints under `/api/*`
+4. Use GraphQL for composable / multi-field queries
+5. Test REST via `/docs` and GraphQL via `/graphql`
+6. Ensure proper error handling and response models
+7. Keep prompts concise and grounded only in retrieved context
 
 ---
 
