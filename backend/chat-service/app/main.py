@@ -2,15 +2,23 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import chat
 import uvicorn
+from app.routes.graphql import graphql_router  
 
-# Initialize FastAPI app
+
 app = FastAPI(
     title="VendorIQ Chat Service",
-    description="Backend RAG microservice: /knowledge/load, /chat/query, /health, /delete-context",
-    version="1.0.0",
+    description=(
+        "### Overview\n"
+        "This service provides both **REST** and **GraphQL** APIs.\n\n"
+        "**REST Endpoints**\n"
+        "- Manage user messages, chat sessions, and system health.\n\n"
+        "**GraphQL Endpoint**\n"
+        "- **URL:** `/graphql`\n"
+        "- Supports queries and mutations for chat interactions.\n"
+    ),
+    version="1.1.0", 
 )
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -19,8 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include only RAG/chat router
+# Include REST router
 app.include_router(chat.router, prefix="/api")
+# Include GraphQL router (no /api prefix to follow common convention)
+app.include_router(graphql_router, prefix="/graphql")
 
 @app.get("/", tags=["Root"])
 async def root():
