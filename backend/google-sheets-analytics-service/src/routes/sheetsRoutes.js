@@ -1,5 +1,5 @@
 import express from "express";
-import { updateSheet, getSummary, getTrends, exportData } from "../controllers/sheetsController.js";
+import { updateSheet, exportData, getAnalytics } from "../controllers/sheetsController.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
  * /api/v1/sheets/update:
  *   post:
  *     summary: Add a new transaction to Google Sheets
- *     description: Accepts vendor name and amount, and stores it in Google Sheets.
+ *     description: Accepts vendor name and amount and stores it in Google Sheets.
  *     tags: [Sheets]
  *     requestBody:
  *       required: true
@@ -40,31 +40,20 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/v1/sheets/summary:
+ * /api/v1/sheets/analytics:
  *   get:
- *     summary: Get total expenses summary
- *     description: Returns overall data summary like total amount, number of transactions, etc.
+ *     summary: Get analytics data from Google Sheet
+ *     description: Returns analytics such as total rows, total amount, category-wise spending, etc.
  *     tags: [Sheets]
  *     responses:
  *       200:
- *         description: Summary fetched successfully
+ *         description: Analytics data fetched successfully
+ *       404:
+ *         description: No analytics data found
  *       500:
  *         description: Internal server error
  */
 
-/**
- * @swagger
- * /api/v1/sheets/trends:
- *   get:
- *     summary: Get spending trends over time
- *     description: Returns trends data such as monthly/weekly vendor-wise expenses.
- *     tags: [Sheets]
- *     responses:
- *       200:
- *         description: Trends fetched successfully
- *       500:
- *         description: Internal server error
- */
 /**
  * @swagger
  * /api/v1/sheets/export:
@@ -82,9 +71,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/update", upload.single("file"), updateSheet);
-
-router.get("/summary", getSummary);
-router.get("/trends", getTrends);
+router.get("/analytics", getAnalytics);
 router.get("/export", exportData);
 
 export default router;
