@@ -2,14 +2,27 @@ import { appendInvoiceData, fetchSummary, fetchTrends, exportSheetData } from ".
 
 export const updateSheet = async (req, res) => {
   try {
-    const result = await appendInvoiceData(req.body);
-    if (!result.success) {
-      return res.status(500).json(result);
+    let payload;
+
+    if (req.file) {
+      const fileContent = req.file.buffer.toString("utf-8");
+      payload = JSON.parse(fileContent);
+      console.log("File uploaded and parsed");
+    } 
+    else if (req.body && Object.keys(req.body).length) {
+      payload = req.body;
+      console.log("JSON body received");
+    } 
+    else {
+      return res.status(400).json({ success: false, message: "No file or JSON data provided" });
     }
-    res.status(201).json({ message: "Data stored successfully", result });
+
+    const result = await appendInvoiceData(payload);
+    res.status(201).json({ success: true, message: "Data stored successfully", result });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in updateSheet:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
