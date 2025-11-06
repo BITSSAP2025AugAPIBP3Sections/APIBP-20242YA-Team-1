@@ -2,6 +2,9 @@ import { google } from "googleapis";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+dotenv.config();
+console.log("SPREADSHEET_ID from env:", process.env.SPREADSHEET_ID);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,18 +24,31 @@ const SHEET_NAME = "Expenses"; // Make sure your sheet has this tab
 
 export const appendInvoiceData = async (invoice) => {
   try {
-    const values = [
-      [invoice.date, invoice.vendor, invoice.amount]
-    ];
+    const rows = [];
+
+    invoice.line_items.forEach((item) => {
+      rows.push([
+        invoice.vendor_name || "",
+        invoice.invoice_number || "",
+        invoice.invoice_date || "",
+        invoice.total_amount || "",
+        item.item_description || "",
+        item.quantity || "",
+        item.unit_price || "",
+        item.amount || ""
+      ]);
+    });
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:C`,
+      range: `${SHEET_NAME}!A:H`,
       valueInputOption: "USER_ENTERED",
-      requestBody: { values },
+      requestBody: {
+        values: rows
+      },
     });
 
-    return { success: true, message: "Data appended to Google Sheet" };
+    return { success: true, message: "Invoice data with line items added to Google Sheets" };
   } catch (error) {
     console.error("Error appending data:", error);
     return { success: false, error: error.message };
