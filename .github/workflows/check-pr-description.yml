@@ -1,0 +1,32 @@
+name: Validate PR Description Format
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  validate-description:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || "";
+            const errors = [];
+
+            // Define required sections
+            const requiredSections = ["Changes", "Test", "Closes"];
+
+            // Check for each required keyword
+            for (const section of requiredSections) {
+              if (!body.toLowerCase().includes(section.toLowerCase())) {
+                errors.push(` Missing required section: **${section}**`);
+              }
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(`PR description validation failed:\n\n${errors.join("\n")}\n\nPlease include all required sections:\n- Changes:\n- Test:\n- Closes:`);
+            } else {
+              console.log(" PR description contains all required sections (Changes, Test, Closes).");
+            }
