@@ -51,6 +51,20 @@ const router = express.Router();
  *         description: Internal server error
  */
 
+/**
+ * @swagger
+ * /api/v1/sheets/trends:
+ *   get:
+ *     summary: Get spending trends over time
+ *     description: Returns trends data such as monthly/weekly vendor-wise expenses.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: Trends fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+
 router.post("/update", updateSheet);
 router.get("/summary", getSummary);
 router.get("/trends", getTrends);
