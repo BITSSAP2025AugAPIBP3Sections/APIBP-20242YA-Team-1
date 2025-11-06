@@ -2,10 +2,24 @@ import { appendInvoiceData, fetchSummary, fetchTrends, exportSheetData } from ".
 
 export const updateSheet = async (req, res) => {
   try {
-    const result = await appendInvoiceData(req.body);
-    res.json({ message: "Data added successfully", result });
+    const { vendor, amount, date } = req.body;
+
+    if (!vendor || !amount) {
+      return res.status(400).json({ message: "Vendor and amount are required" });
+    }
+
+    const expenseDate = date || new Date().toISOString().split("T")[0];
+
+    const response = await appendInvoiceData({
+      vendor,
+      amount,
+      date: expenseDate,
+    });
+
+    res.status(201).json(response);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error updating sheet:", error);
+    res.status(500).json({ message: "Failed to update the Google Sheet" });
   }
 };
 
