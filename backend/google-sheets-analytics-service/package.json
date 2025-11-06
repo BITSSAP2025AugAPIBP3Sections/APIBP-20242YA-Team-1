@@ -17,6 +17,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "googleapis": "^164.1.0",
+    "multer": "^2.0.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   }
