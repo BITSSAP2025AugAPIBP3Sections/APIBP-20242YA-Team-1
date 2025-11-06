@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-//All your source code is inside src/
 import sheetsRoutes from "./src/routes/sheetsRoutes.js";
 import { swaggerDocs } from "./src/routes/swaggerDocs.js";
 

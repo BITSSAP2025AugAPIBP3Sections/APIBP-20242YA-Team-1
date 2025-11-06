@@ -93,18 +93,49 @@ export const fetchTrends = async () => {
   return trends;
 };
 
-export const exportSheetData = async () => {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A:C`,
-  });
+export const exportSheetData = async (format = "csv") => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:Z`,
+    });
 
-  const rows = response.data.values || [];
-  const csvContent = rows.map((r) => r.join(",")).join("\n");
+    const rows = response.data.values || [];
+    if (rows.length === 0) {
+      throw new Error("No data found in the sheet");
+    }
 
-  const filePath = path.join(__dirname, "../exports/expenses.csv");
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, csvContent);
+    const exportDir = path.join(__dirname, "../exports");
+    fs.mkdirSync(exportDir, { recursive: true });
 
-  return filePath;
+    let filePath;
+
+    if (format === "csv") {
+      filePath = path.join(exportDir, "expenses.csv");
+      const csvContent = rows.map((r) => r.join(",")).join("\n");
+      fs.writeFileSync(filePath, csvContent);
+    }
+
+    else if (format === "json") {
+      filePath = path.join(exportDir, "expenses.json");
+      const [headers, ...data] = rows;
+
+      const jsonData = data.map((row) =>
+        Object.fromEntries(
+          headers.map((key, idx) => [key || `column_${idx+1}`, row[idx] || ""])
+        )
+      );
+
+      fs.writeFileSync(filePath, JSON.stringify(jsonData, null, 2));
+    }
+
+    else {
+      throw new Error("Unsupported export format. Use 'csv' or 'json'.");
+    }
+
+    return filePath;
+  } catch (error) {
+    console.error("Error exporting sheet data:", error);
+    throw error;
+  }
 };
