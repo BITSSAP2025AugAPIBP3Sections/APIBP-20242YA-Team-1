@@ -17,7 +17,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-const sheets = google.sheets({ version: "v4", auth });
+export const sheets = google.sheets({ version: "v4", auth });
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 const SHEET_NAME = "Expenses"; // Make sure your sheet has this tab
@@ -50,47 +50,26 @@ export const appendInvoiceData = async (invoice) => {
 
     return { success: true, message: "Invoice data with line items added to Google Sheets" };
   } catch (error) {
-    console.error("Error appending data:", error);
+    console.error("Error appending to sheet:", error);
     return { success: false, error: error.message };
   }
 };
 
-export const fetchSummary = async () => {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A:C`,
-  });
-
-  const rows = response.data.values || [];
-  const summary = {};
-
-  rows.slice(1).forEach(([date, vendor, amount]) => {
-    if (!summary[vendor]) summary[vendor] = 0;
-    summary[vendor] += parseFloat(amount || 0);
-  });
-
-  return Object.entries(summary).map(([vendor, total]) => ({
-    vendor,
-    total,
-  }));
-};
-
-export const fetchTrends = async () => {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A:C`,
-  });
-
-  const rows = response.data.values || [];
-  const trends = {};
-
-  rows.slice(1).forEach(([date, vendor, amount]) => {
-    const month = date?.slice(0, 7); // Example → 2025-02
-    if (!trends[month]) trends[month] = 0;
-    trends[month] += parseFloat(amount || 0);
-  });
-
-  return trends;
+export const getAnalytics = async (req, res) => {
+  try {
+    const data = await fetchAnalyticsData();
+    res.status(200).json({
+      success: true,
+      message: "Analytics retrieved successfully",
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error while retrieving analytics",
+      error: error.message,
+    });
+  }
 };
 
 export const exportSheetData = async () => {

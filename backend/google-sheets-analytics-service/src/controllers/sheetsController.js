@@ -1,4 +1,5 @@
-import { appendInvoiceData, fetchSummary, fetchTrends, exportSheetData } from "../services/sheetsService.js";
+import { appendInvoiceData, exportSheetData } from "../services/sheetsService.js";
+import { fetchAnalyticsData } from "../services/analyticsService.js";
 
 export const updateSheet = async (req, res) => {
   try {
@@ -13,28 +14,22 @@ export const updateSheet = async (req, res) => {
   }
 };
 
-export const getSummary = async (req, res) => {
+export const getAnalytics = async (req, res) => {
   try {
-    const data = await fetchSummary();
-    res.json(data);
+    const data = await fetchAnalyticsData();
+    res.status(200).json({
+      success: true,
+      message: "Analytics retrieved successfully",
+      data,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getAnalytics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error while retrieving analytics",
+      error: error.message,
+    });
   }
-};
-
-export const getTrends = async (req, res) => {
-    try {
-      const data = await fetchTrends();
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-  try {
-    const data = await fetchTrends();
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-}
 };
 
 export const exportData = async (req, res) => {
