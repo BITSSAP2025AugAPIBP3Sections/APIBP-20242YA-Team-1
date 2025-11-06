@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { fetchAndProcessEmails } from "./gmailService.js";
+import logger from "../utils/logger.js";
 
 // Store scheduled jobs to prevent duplicates
 const scheduledJobs = {};
@@ -14,7 +15,7 @@ const scheduledJobs = {};
 export default function scheduleEmailJob(userId, fromDate, frequency, filters) {
   // If already scheduled → avoid duplication
   if (scheduledJobs[userId]) {
-    console.log(`Job for user ${userId} already exists. Skipping new schedule.`);
+    logger.warn(`Job for user ${userId} already exists. Skipping new schedule.`);
     return;
   }
 
@@ -23,7 +24,7 @@ export default function scheduleEmailJob(userId, fromDate, frequency, filters) {
   switch (frequency) {
     case "minute":
         cronTime = "* * * * *";
-        break;                          // Every minute
+        break;                         // Every minute at :00
     case "hourly":
       cronTime = "0 * * * *";          // Every hour at minute 0
       break;
@@ -39,17 +40,17 @@ export default function scheduleEmailJob(userId, fromDate, frequency, filters) {
 
   // Create scheduled job
   const job = cron.schedule(cronTime, async () => {
-    console.log(`⏳ Running scheduled email fetch for user ${userId}...`);
+    logger.info(`Running scheduled email fetch for user ${userId}`);
     try {
       await fetchAndProcessEmails(userId, fromDate, filters);
-      console.log(`✅ Emails processed successfully for user ${userId}`);
+      logger.info(`Emails processed successfully for user ${userId}`);
     } catch (err) {
-      console.error(`❌ Error during scheduled email fetch: `, err);
+      logger.error(err, { userId, phase: "scheduledFetch" });
     }
   });
 
   scheduledJobs[userId] = job;
   job.start();
 
-  console.log(`✅ Scheduled job for user ${userId}, running ${frequency}`);
+  logger.info(`Scheduled job for user ${userId}, frequency=${frequency}`);
 }

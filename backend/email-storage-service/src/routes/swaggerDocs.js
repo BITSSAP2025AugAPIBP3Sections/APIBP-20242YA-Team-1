@@ -147,7 +147,7 @@ export const swaggerDocs = {
                 required: ["type", "frequency"],
                 properties: {
                   type: { type: "string", enum: ["auto"] },
-                  frequency: { type: "string", enum: ["hourly", "daily", "weekly"] },
+                  frequency: { type: "string", enum: ["hourly", "daily", "weekly", "minute"] },
                 },
               },
             ],

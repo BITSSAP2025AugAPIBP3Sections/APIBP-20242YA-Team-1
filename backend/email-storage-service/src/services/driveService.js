@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { Readable } from "stream";
+import logger from "../utils/logger.js";
 
 export const saveToDrive = async (user, vendor, fileBuffer, fileName) => {
   const oauth2Client = new google.auth.OAuth2(
@@ -39,7 +40,7 @@ export const saveToDrive = async (user, vendor, fileBuffer, fileName) => {
     },
   });
 
-  console.log(`Uploaded → ${safeVendor}/invoices/${fileName}`);
+  logger.info(`Uploaded → ${safeVendor}/invoices/${fileName}`);
 
 };
 

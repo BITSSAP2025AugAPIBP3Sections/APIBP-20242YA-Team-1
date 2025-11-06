@@ -61,7 +61,7 @@ export const fetchAndProcessEmails = async (userId, fromDate) => {
   }
 
   await User.findByIdAndUpdate(userId, {
-    lastSyncedAt: new Date()  // Store current time as last success sync
+    lastSyncedAt: new Date()  // Store current time as last successful sync
   });
 
 

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import logger from "../utils/logger.js";
 
 export const connectDB = async () => {
   try {
@@ -7,9 +7,9 @@ export const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("✅ MongoDB Connected Successfully");
+    logger.info("MongoDB Connected Successfully");
   } catch (error) {
-    console.error("❌ MongoDB Connection Error:", error.message);
+    logger.error(error, { msg: "MongoDB Connection Error" });
     process.exit(1);
   }
 };

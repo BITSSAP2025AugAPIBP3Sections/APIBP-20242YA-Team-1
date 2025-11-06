@@ -4,6 +4,7 @@ import {config} from "./config/index.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
+import logger, { requestLogger } from "./utils/logger.js";
 
 //imports for swagger documentation
 import swaggerUi from "swagger-ui-express";
@@ -11,7 +12,6 @@ import {swaggerDocs} from "./routes/swaggerDocs.js";
 import emailRoutes from "./routes/emailRoutes.js";
 import {connectDB} from "./config/db.js";
 import { getGoogleAuthURL, googleOAuthCallback } from "./controllers/authController.js";
-import User from "./models/User.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -19,6 +19,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+app.use(requestLogger);
 
 //db connection
 connectDB();
@@ -50,6 +51,6 @@ app.use("/api/v1", fetchLimiter, emailRoutes);
 // Start the server
 
 app.listen(config.port, () => {
-    console.log(`Email Storage Service is running on port ${config.port}`);
-    console.log(`Swagger docs available at http://localhost:${config.port}/api-docs`);
+    logger.info(`Email Storage Service is running on port ${config.port}`);
+    logger.info(`Swagger docs available at http://localhost:${config.port}/api-docs`);
 });
