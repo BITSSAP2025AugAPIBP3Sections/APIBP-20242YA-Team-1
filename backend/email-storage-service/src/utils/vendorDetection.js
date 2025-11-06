@@ -1,6 +1,10 @@
 export const detectVendor = (fromEmail = "") => {
   const emailMatch = fromEmail.match(/<(.+?)>/) || [null, fromEmail];
   const email = emailMatch[1].trim().toLowerCase();
+   // Validate email format
+  if (!email || !email.includes("@")) {
+    return "Unknown";
+  }
 
   const [username, domain] = email.split("@");
 
