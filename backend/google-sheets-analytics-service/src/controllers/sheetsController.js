@@ -3,9 +3,13 @@ import { appendInvoiceData, fetchSummary, fetchTrends, exportSheetData } from ".
 export const updateSheet = async (req, res) => {
   try {
     const result = await appendInvoiceData(req.body);
-    res.json({ message: "Data added successfully", result });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    res.status(201).json({ message: "Data stored successfully", result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
