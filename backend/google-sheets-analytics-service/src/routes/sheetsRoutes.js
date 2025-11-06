@@ -37,6 +37,20 @@ const router = express.Router();
  *         description: Internal server error
  */
 
+/**
+ * @swagger
+ * /api/v1/sheets/summary:
+ *   get:
+ *     summary: Get total expenses summary
+ *     description: Returns overall data summary like total amount, number of transactions, etc.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: Summary fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+
 router.post("/update", updateSheet);
 router.get("/summary", getSummary);
 router.get("/trends", getTrends);
