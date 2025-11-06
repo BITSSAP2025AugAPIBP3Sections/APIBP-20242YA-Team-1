@@ -1,5 +1,6 @@
 import express from "express";
 import { updateSheet, getSummary, getTrends, exportData } from "../controllers/sheetsController.js";
+import multer from "multer";
 
 const router = express.Router();
 
@@ -78,7 +79,10 @@ const router = express.Router();
  *         description: Failed to export data
  */
 
-router.post("/update", updateSheet);
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post("/update", upload.single("file"), updateSheet);
+
 router.get("/summary", getSummary);
 router.get("/trends", getTrends);
 router.get("/export", exportData);
