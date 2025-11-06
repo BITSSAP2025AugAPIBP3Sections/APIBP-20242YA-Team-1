@@ -64,6 +64,19 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
+/**
+ * @swagger
+ * /api/v1/sheets/export:
+ *   get:
+ *     summary: Export analytics data
+ *     description: Exports data to CSV or downloadable format from Google Sheets.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: File exported successfully
+ *       500:
+ *         description: Failed to export data
+ */
 
 router.post("/update", updateSheet);
 router.get("/summary", getSummary);
