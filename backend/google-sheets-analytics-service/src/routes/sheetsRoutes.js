@@ -5,12 +5,18 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Sheets
+ *   description: Google Sheets Analytics Service APIs
+ */
+
+/**
+ * @swagger
  * /api/v1/sheets/update:
  *   post:
- *     summary: Update Google Sheets data
- *     description: Receives vendor and amount, updates Google Sheets with the transaction info.
- *     tags:
- *       - Sheets
+ *     summary: Add a new transaction to Google Sheets
+ *     description: Accepts vendor name and amount, and stores it in Google Sheets.
+ *     tags: [Sheets]
  *     requestBody:
  *       required: true
  *       content:
@@ -26,9 +32,9 @@ const router = express.Router();
  *                 example: 1200
  *     responses:
  *       200:
- *         description: Successfully processed and sent data to Google Sheets
- *       400:
- *         description: Invalid request data
+ *         description: Successfully updated the sheet
+ *       500:
+ *         description: Internal server error
  */
 
 router.post("/update", updateSheet);
