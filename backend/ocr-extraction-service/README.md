@@ -20,16 +20,29 @@ app/
 └── utils/ # Helper functions
 
 
+
 ## 🚀 How to Run
 
-1.  **Go to the directory level of your virtual environment (`venv`).**
-2.  **Activate the virtual environment:**
+1.  **Create a virtual environment:**
     ```bash
-    source venv/bin/activate
+    python3 -m venv venv
     ```
-3.  **Run the application:**
+2.  **Activate the virtual environment:**
+    * On macOS/Linux:
+        ```bash
+        source venv/bin/activate
+        ```
+    * On Windows:
+        ```bash
+        venv\Scripts\activate
+        ```
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Run the application:**
     ```bash
     uvicorn app.main:app --reload
     ```
-4.  **View API Documentation:**
+5.  **View API Documentation:**
     Open your browser and go to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to see the Swagger UI.
