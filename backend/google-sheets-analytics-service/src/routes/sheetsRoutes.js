@@ -5,12 +5,18 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Sheets
+ *   description: Google Sheets Analytics Service APIs
+ */
+
+/**
+ * @swagger
  * /api/v1/sheets/update:
  *   post:
- *     summary: Update Google Sheets data
- *     description: Receives vendor and amount, updates Google Sheets with the transaction info.
- *     tags:
- *       - Sheets
+ *     summary: Add a new transaction to Google Sheets
+ *     description: Accepts vendor name and amount, and stores it in Google Sheets.
+ *     tags: [Sheets]
  *     requestBody:
  *       required: true
  *       content:
@@ -26,9 +32,50 @@ const router = express.Router();
  *                 example: 1200
  *     responses:
  *       200:
- *         description: Successfully processed and sent data to Google Sheets
- *       400:
- *         description: Invalid request data
+ *         description: Successfully updated the sheet
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/v1/sheets/summary:
+ *   get:
+ *     summary: Get total expenses summary
+ *     description: Returns overall data summary like total amount, number of transactions, etc.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: Summary fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/v1/sheets/trends:
+ *   get:
+ *     summary: Get spending trends over time
+ *     description: Returns trends data such as monthly/weekly vendor-wise expenses.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: Trends fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+/**
+ * @swagger
+ * /api/v1/sheets/export:
+ *   get:
+ *     summary: Export analytics data
+ *     description: Exports data to CSV or downloadable format from Google Sheets.
+ *     tags: [Sheets]
+ *     responses:
+ *       200:
+ *         description: File exported successfully
+ *       500:
+ *         description: Failed to export data
  */
 
 router.post("/update", updateSheet);
