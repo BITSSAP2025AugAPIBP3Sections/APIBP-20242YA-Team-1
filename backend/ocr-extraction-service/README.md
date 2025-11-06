@@ -18,3 +18,18 @@ app/
 ├── services/ # Business logic (Gemini, OCR)
 ├── models/ # Data models (Pydantic)
 └── utils/ # Helper functions
+
+
+## 🚀 How to Run
+
+1.  **Go to the directory level of your virtual environment (`venv`).**
+2.  **Activate the virtual environment:**
+    ```bash
+    source venv/bin/activate
+    ```
+3.  **Run the application:**
+    ```bash
+    uvicorn app.main:app --reload
+    ```
+4.  **View API Documentation:**
+    Open your browser and go to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to see the Swagger UI.
