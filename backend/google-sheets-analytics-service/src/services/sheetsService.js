@@ -139,3 +139,18 @@ export const exportSheetData = async (format = "csv") => {
     throw error;
   }
 };
+export const exportSheetData = async () => {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A:C`,
+  });
+
+  const rows = response.data.values || [];
+  const csvContent = rows.map((r) => r.join(",")).join("\n");
+
+  const filePath = path.join(__dirname, "../exports/expenses.csv");
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, csvContent);
+
+  return filePath;
+};
