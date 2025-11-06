@@ -39,9 +39,17 @@ export const getTrends = async (req, res) => {
 
 export const exportData = async (req, res) => {
   try {
-    const file = await exportSheetData(req.query.format);
-    res.download(file);
+    const format = req.query.format || "csv";
+    const filePath = await exportSheetData(format);
+
+    return res.download(filePath, (err) => {
+      if (err) {
+        console.error("Error downloading file:", err);
+        return res.status(500).json({ error: "Failed to download file" });
+      }
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error exporting data:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
