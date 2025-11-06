@@ -55,7 +55,6 @@ export const appendInvoiceData = async (invoice) => {
   }
 };
 
-
 export const fetchSummary = async () => {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
