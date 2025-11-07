@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/your-org/InvoiceFlow.AI/main/assets/invoiceflow-banner.svg" width="90%" alt="InvoiceFlow.AI Banner"/>
+<img src="https://github.com/user-attachments/assets/d2d4e9d4-493b-4f8a-adcf-ec56e0ad2707" width="90%" alt="InvoiceFlow.AI Banner"/>
 
 # 📁 InvoiceFlow.AI  
 
@@ -38,7 +38,7 @@ They arrive scattered across emails, PDFs, and attachments — making tax audits
 ## 🏗️ System Architecture
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/your-org/InvoiceFlow.AI/main/assets/architecture-diagram.svg" width="85%" alt="Architecture Diagram"/>
+  <img src="" width="85%" alt="Architecture Diagram"/>
 </div>
 
 ### 🧩 Services Overview
@@ -65,7 +65,7 @@ They arrive scattered across emails, PDFs, and attachments — making tax audits
 6. **Logging** is integrated per-service for audit trails and monitoring.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/your-org/InvoiceFlow.AI/main/assets/system-flow.svg" width="80%" alt="System Flow Diagram"/>
+  <img src="https://github.com/user-attachments/assets/cc601cb1-de4e-46dd-a98c-d2e230143cb1" width="80%" alt="System Flow Diagram"/>
 </div>
 
 ---
