@@ -353,6 +353,15 @@ See [LICENSE](./LICENSE) for details.
 
 ---
 
+## 👥 Contributors
+
+Thanks to all the amazing contributors 💙
+
+<a href="https://github.com/BITSSAP2025AugAPIBP3Sections/APIBP-20242YA-Team-1/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=BITSSAP2025AugAPIBP3Sections/APIBP-20242YA-Team-1" />
+</a>
+
+
 <div align="center">
 
 ### 🌟 Empowering Businesses through Automation
