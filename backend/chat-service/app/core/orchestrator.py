@@ -200,7 +200,7 @@ class VendorKnowledgeOrchestrator:
             vendor_info = {"vendor_name": vendor_name, "total_chunks": len(results["documents"]), "invoices": [], "summary": {}}
             for doc, metadata in zip(results["documents"], results["metadatas"]):
                 if metadata.get("type") == "invoice":
-                    vendor_info["invoices"].append({"invoice_name": metadata.get("invoice_name"), "invoice_number": metadata.get("invoice_number"), "amount": metadata.get("total_amount", 0), "date": metadata.get("date")})
+                    vendor_info["invoices"].append({"invoice_number": metadata.get("invoice_number"), "amount": metadata.get("total_amount", 0), "invoice_date": metadata.get("invoice_date")})
                 elif metadata.get("type") == "vendor_summary":
                     vendor_info["summary"] = {"last_updated": metadata.get("last_updated"), "total_invoices": metadata.get("invoice_count", 0), "total_amount": metadata.get("total_amount", 0)}
             return {"success": True, "vendor_info": vendor_info}
