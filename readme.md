@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="https://github.com/user-attachments/assets/d2d4e9d4-493b-4f8a-adcf-ec56e0ad2707" width="90%" alt="InvoiceFlow.AI Banner"/>
+<img src="https://github.com/user-attachments/assets/d2d4e9d4-493b-4f8a-adcf-ec56e0ad2707" width="90%" alt="VendorIQ.AI Banner"/>
 
-# 📁 InvoiceFlow.AI  
+# 📁 VendorIQ.AI  
 
 ### 🤖 AI-Powered Invoice Automation Platform for SMBs
 
@@ -26,7 +26,7 @@ Small and medium businesses (SMBs) handle hundreds of vendor invoices every mont
 They arrive scattered across emails, PDFs, and attachments — making tax audits, reconciliation, and analytics **slow and error-prone**.
 
 ### 💡 The Solution
-**InvoiceFlow.AI** is an end-to-end **AI-powered invoice automation system** that:
+**VendorIQ.AI** is an end-to-end **AI-powered invoice automation system** that:
 - Fetches invoices automatically from Gmail.
 - Categorizes them by **vendor** into Google Drive.
 - Extracts structured data using **OCR + AI**.
@@ -127,7 +127,7 @@ cd APIBP-20242YA-Team-1
 ### 2️⃣ Folder Structure
 
 ```
-InvoiceFlow.AI/
+VendorIQ.AI/
 ├── Frontend/                              # React + Vite frontend with Tailwind CSS
 └── backend/
     ├── authentication-service/            # Authentication & User Management (Flask)
@@ -366,6 +366,6 @@ Thanks to all the amazing contributors 💙
 
 ### 🌟 Empowering Businesses through Automation
 
-Built with ❤️ by the **InvoiceFlow.AI** Team
+Built with ❤️ by the **VendorIQ.AI** Team
 
 </div>
