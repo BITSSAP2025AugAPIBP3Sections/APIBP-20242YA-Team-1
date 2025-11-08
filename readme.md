@@ -1,6 +1,4 @@
-<div align="center">
-
-<img src="https://github.com/user-attachments/assets/d2d4e9d4-493b-4f8a-adcf-ec56e0ad2707" width="90%" alt="VendorIQ.AI Banner"/>
+<img src="https://github.com/user-attachments/assets/43a9dc8d-88d8-438b-a573-ce9fb1d4adae" width="90%" alt="VendorIQ.AI Banner"/>
 
 # 📁 VendorIQ.AI  
 
@@ -19,7 +17,7 @@
 
 ---
 
-## 🧠 Overview
+## Overview
 
 ### 📌 The Problem
 Small and medium businesses (SMBs) handle hundreds of vendor invoices every month.  
@@ -65,14 +63,14 @@ They arrive scattered across emails, PDFs, and attachments — making tax audits
 6. **Logging** is integrated per-service for audit trails and monitoring.
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/cc601cb1-de4e-46dd-a98c-d2e230143cb1" width="80%" alt="System Flow Diagram"/>
+  <img src="https://github.com/user-attachments/assets/fa362905-6d4f-4d65-9175-4eb611691ee7" width="80%" alt="System Flow Diagram"/>
 </div>
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🚀 Core Features
+### Core Features
 - 📩 **Gmail Invoice Fetching** (OAuth + scheduled automation)
 - 📂 **Google Drive Storage** (vendor-wise folders: `invoiceAutomation/<Vendor>/invoices`)
 - 🧾 **AI-Powered OCR** (Google Gemini API for structured extraction)
@@ -331,13 +329,6 @@ Closes #<issue_number>
 * 🔐 Multi-Tenant SaaS Deployment
 * 🧾 Automatic Payment Reminder Emails
 * 🤖 GPT Fine-tuning for domain-specific invoice Q&A
-
----
-
-## 📝 License
-
-This project is licensed under the **MIT License**.
-See [LICENSE](./LICENSE) for details.
 
 ---
 
