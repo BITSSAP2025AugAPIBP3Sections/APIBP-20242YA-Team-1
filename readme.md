@@ -1,8 +1,6 @@
-<div align="center">
+<img src="https://github.com/user-attachments/assets/43a9dc8d-88d8-438b-a573-ce9fb1d4adae" width="90%" alt="VendorIQ.AI Banner"/>
 
-<img src="https://github.com/user-attachments/assets/d2d4e9d4-493b-4f8a-adcf-ec56e0ad2707" width="90%" alt="InvoiceFlow.AI Banner"/>
-
-# 📁 InvoiceFlow.AI  
+# 📁 VendorIQ.AI  
 
 ### 🤖 AI-Powered Invoice Automation Platform for SMBs
 
@@ -19,14 +17,14 @@
 
 ---
 
-## 🧠 Overview
+## Overview
 
 ### 📌 The Problem
 Small and medium businesses (SMBs) handle hundreds of vendor invoices every month.  
 They arrive scattered across emails, PDFs, and attachments — making tax audits, reconciliation, and analytics **slow and error-prone**.
 
 ### 💡 The Solution
-**InvoiceFlow.AI** is an end-to-end **AI-powered invoice automation system** that:
+**VendorIQ.AI** is an end-to-end **AI-powered invoice automation system** that:
 - Fetches invoices automatically from Gmail.
 - Categorizes them by **vendor** into Google Drive.
 - Extracts structured data using **OCR + AI**.
@@ -65,14 +63,14 @@ They arrive scattered across emails, PDFs, and attachments — making tax audits
 6. **Logging** is integrated per-service for audit trails and monitoring.
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/cc601cb1-de4e-46dd-a98c-d2e230143cb1" width="80%" alt="System Flow Diagram"/>
+  <img src="https://github.com/user-attachments/assets/fa362905-6d4f-4d65-9175-4eb611691ee7" width="80%" alt="System Flow Diagram"/>
 </div>
 
 ---
 
-## ✨ Features
+##  Features
 
-### 🚀 Core Features
+### Core Features
 - 📩 **Gmail Invoice Fetching** (OAuth + scheduled automation)
 - 📂 **Google Drive Storage** (vendor-wise folders: `invoiceAutomation/<Vendor>/invoices`)
 - 🧾 **AI-Powered OCR** (Google Gemini API for structured extraction)
@@ -127,7 +125,7 @@ cd APIBP-20242YA-Team-1
 ### 2️⃣ Folder Structure
 
 ```
-InvoiceFlow.AI/
+VendorIQ.AI/
 ├── Frontend/                              # React + Vite frontend with Tailwind CSS
 └── backend/
     ├── authentication-service/            # Authentication & User Management (Flask)
@@ -147,33 +145,6 @@ Each service has its own `.env` file. Refer to individual service READMEs for de
 - [OCR Extraction Service](./backend/ocr-extraction-service/README.md)
 - [Google Sheets Analytics Service](./backend/google-sheets-analytics-service/README.md)
 - [Chat Service](./backend/chat-service/README.md)
-
-**Quick Example for Email Storage Service:**
-
-```env
-PORT=4002
-MONGO_URI=mongodb://localhost:27017/invoiceflow
-GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_secret
-GOOGLE_REDIRECT_URI=http://localhost:4002/auth/google/callback
-JWT_SECRET=your_jwt_secret_key
-LOG_LEVEL=info
-NODE_ENV=development
-```
-
-**Install Dependencies & Run:**
-
-```bash
-# For Node.js services (email-storage, sheets-analytics)
-cd backend/email-storage-service
-npm install
-npm run dev
-
-# For Python services (auth, ocr, chat)
-cd backend/authentication-service
-pip install -r requirements.txt
-python src/main.py
-```
 
 **Swagger Documentation Available At:**
 - 🔐 Auth: `http://localhost:4001/docs`
@@ -334,13 +305,6 @@ Closes #<issue_number>
 
 ---
 
-## 📝 License
-
-This project is licensed under the **MIT License**.
-See [LICENSE](./LICENSE) for details.
-
----
-
 ## 🙌 Acknowledgments
 
 * [Google Cloud APIs](https://console.cloud.google.com/apis/dashboard)
@@ -366,6 +330,6 @@ Thanks to all the amazing contributors 💙
 
 ### 🌟 Empowering Businesses through Automation
 
-Built with ❤️ by the **InvoiceFlow.AI** Team
+Built with ❤️ by the **VendorIQ.AI** Team
 
 </div>
