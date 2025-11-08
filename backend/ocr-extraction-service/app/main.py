@@ -53,7 +53,7 @@ async def process_pdfs_in_background():
                 try:
                     with open(pdf_path, "rb") as f:
                         response = await client.post(
-                            "http://localhost:8000/api/invoice/extract",
+                            "http://localhost:8000/api/v1/invoice/extract",
                             files={"file": (filename, f, "application/pdf")}
                         )
 
@@ -98,11 +98,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Router Inclusion ---
-app.include_router(base_routes.router)
-app.include_router(pdf_ocr_routes.router)
-app.include_router(text_to_json.router)
-app.include_router(invoice_routes.router)
+# --- Router Inclusion with Version Prefix ---
+API_VERSION = "/api/v1"
+app.include_router(base_routes.router, prefix=API_VERSION)
+app.include_router(pdf_ocr_routes.router, prefix=API_VERSION)
+app.include_router(text_to_json.router, prefix=API_VERSION)
+app.include_router(invoice_routes.router, prefix=API_VERSION)
 
 # --- API Endpoints ---
 @app.get("/", tags=["Root"])

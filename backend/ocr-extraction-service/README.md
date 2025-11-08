@@ -1,4 +1,4 @@
-# 🧾 Invoice OCR + Gemini Extraction Microservice
+# 🧾 VendorIQ.ai :- Invoice OCR + Gemini Extraction Microservice
 
 This microservice extracts text from vendor invoice PDFs using OCR and converts it into structured JSON using the **Gemini API**.
 
