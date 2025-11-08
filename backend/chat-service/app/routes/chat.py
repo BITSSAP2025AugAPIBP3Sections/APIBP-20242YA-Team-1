@@ -87,7 +87,7 @@ async def list_endpoints(request: Request):
         # Only include chat REST and GraphQL root
         if not (path.startswith("/api/v1/") or path == "/graphql"):
             continue
-        if path == "/api/v1/endpoints":  # do not list this listing endpoint itself
+        if path == request.url.path:  # do not list this listing endpoint itself
             continue
         methods = {m for m in route.methods if m != "HEAD"}
         if not methods:
