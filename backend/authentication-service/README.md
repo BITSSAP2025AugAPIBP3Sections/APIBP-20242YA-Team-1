@@ -1,40 +1,49 @@
-AUTHENTICATION SERVICE
+#  Authentication Service
 
-DESCRIPTION-
+##  Description
+The Authentication Service handles user authentication and authorization using two methods:
+- Google OAuth2 login
+- Email & password–based login and registration
 
-The Authentication Service handles user authentication and authorization using two methods: google OAuth login and email & password-based login and registration.
+This service issues secure JWT access & refresh tokens and provides user management APIs.
 
-Features-
+---
 
--Google OAuth2 login
--Email/password registration & login
--JWT access/refresh token handling
--Logout & refresh token rotation
--User list & delete endpoints
+##  Features
+-  Google OAuth2 login
+-  Email/password registration & login
+-  JWT access & refresh token generation
+-  Token rotation & logout
+-  User fetch & delete endpoints
 
-Tech Stack-
+---
 
-Component                         Type
-Python                            Programming Language
-Flask                             Web Framework
-Flask-Cors                        Flask Extension
-google-auth                       Library
-google-auth-oauthlib              Library
-python-dotenv                     Utility Tool
-JWT (JSON Web Token)              Authentication Standard
-SQLite / MySQL                    Database
+##  Tech Stack
 
-Getting Started-
+| Component                | Type                       |
+|-------------------------|----------------------------|
+| Python                  | Programming Language       |
+| Flask                   | Web Framework              |
+| Flask-Cors              | Flask Extension            |
+| google-auth             | Library                    |
+| google-auth-oauthlib    | Library                    |
+| python-dotenv           | Environment Variables      |
+| JWT Tokens              | Authentication Standard    |
+| SQLite / MySQL          | Database                   |
 
-# Navigate to authentication-service directory
+---
+
+##  Getting Started
+
+### 1️⃣ Navigate to authentication-service directory
 cd backend/authentication-service
-# Create virtual environment
+## Create virtual environment
 python -m venv venv
 source venv/bin/activate  
-# Install dependencies
+## Install dependencies
 pip install -r requirements.txt
 
-Add Environment Variables-
+##  Add Environment Variables-
 
 Create a .env file in the project root and add:
 
@@ -61,7 +70,7 @@ http://localhost:4001
 Swagger docs at:
 http://localhost:4001/docs
 
-API Endpoints
+##  API Endpoints
  
 Method	 Endpoint	        Description
 GET	      /                 Health check
