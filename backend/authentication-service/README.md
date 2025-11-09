@@ -43,7 +43,7 @@ source venv/bin/activate
 ## Install dependencies
 pip install -r requirements.txt
 
-##  Add Environment Variables-
+##  Environment variables
 
 Create a .env file in the project root and add:
 
