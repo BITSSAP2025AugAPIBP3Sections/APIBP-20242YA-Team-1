@@ -45,22 +45,23 @@ pip install -r requirements.txt
 
 ---
 
-##  Environment variables
+##  Environment Variables
 
-Create a .env file in the project root and add:
+Create a `.env` file in the project root and add:
 
-FRONTEND_URL=frontend-app-url
+| Variable Name                |  Description                         |
+|-----------------------------|---------------------------------------|
+| FRONTEND_URL                | Frontend application URL              |
+| GOOGLE_CLIENT_ID            | Google OAuth client ID                |
+| GOOGLE_CLIENT_SECRET        | Google OAuth client secret            |
+| GOOGLE_REDIRECT_URI         | OAuth Redirect URI                    |
+| SECRET_KEY                  | Flask secret key                      |
+| JWT_SECRET                  | JWT signing key                       |
+| JWT_ALGORITHM               | Token algorithm (e.g., HS256)         |
+| ACCESS_TOKEN_EXPIRE_MINUTES | Access token expiry time              |
+| REFRESH_TOKEN_EXPIRE_DAYS   | Refresh token expiry time             |
+| COOKIE_SECURE               | TRUE for production, FALSE for dev    |
 
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-GOOGLE_REDIRECT_URI=redirect-uri
-SECRET_KEY=flasksecretkey
-
-JWT_SECRET="anytoken"
-JWT_ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=11
-REFRESH_TOKEN_EXPIRE_DAYS=2
-COOKIE_SECURE=FALSE if dev else TRUE
 
 Run the Server-
 python -m src.main.app
@@ -75,18 +76,19 @@ http://localhost:4001/docs
 ---
 
 ##  API Endpoints
- 
-Method	  Endpoint	           Description
-GET	      /                 Health check
-GET	      /auth/login	      Generate Google OAuth2 consent URL
-GET	      /oauth2callback	  Handle Google OAuth2 callback
-POST	     /register	        Register new user
-POST	     /login	           Login with email & password
-POST	    /auth/refresh	     Refresh access token
-POST	    /auth/logout	      Logout user
-GET	      /users	           Fetch all users
-DELETE 	  /delete-user	     Delete user by ID
- 
+
+| Method | Endpoint          | Description                             |
+|--------|------------------|-----------------------------------------|
+| GET    | /                | Health check                            |
+| GET    | /auth/login      | Generate Google OAuth2 consent URL      |
+| GET    | /oauth2callback  | Handle Google OAuth2 callback           |
+| POST   | /register        | Register new user                       |
+| POST   | /login           | Login with email & password             |
+| POST   | /auth/refresh    | Refresh access token                    |
+| POST   | /auth/logout     | Logout user                             |
+| GET    | /users           | Fetch all users                         |
+| DELETE | /delete-user     | Delete user by ID                       |
+
 
 
  
