@@ -52,20 +52,14 @@ Create a .env file in the project root and add:
 FRONTEND_URL=frontend-app-url
 
 GOOGLE_CLIENT_ID=your-client-id
-
 GOOGLE_CLIENT_SECRET=your-client-secret
-
 GOOGLE_REDIRECT_URI=redirect-uri
-
 SECRET_KEY=flasksecretkey
 
 JWT_SECRET="anytoken"
 JWT_ALGORITHM="HS256"
-
 ACCESS_TOKEN_EXPIRE_MINUTES=11
-
 REFRESH_TOKEN_EXPIRE_DAYS=2
-
 COOKIE_SECURE=FALSE if dev else TRUE
 
 Run the Server-
@@ -84,21 +78,13 @@ http://localhost:4001/docs
  
 Method	  Endpoint	           Description
 GET	      /                 Health check
-
 GET	      /auth/login	      Generate Google OAuth2 consent URL
-
 GET	      /oauth2callback	  Handle Google OAuth2 callback
-
 POST	     /register	        Register new user
-
 POST	     /login	           Login with email & password
-
 POST	    /auth/refresh	     Refresh access token
-
 POST	    /auth/logout	      Logout user
-
 GET	      /users	           Fetch all users
-
 DELETE 	  /delete-user	     Delete user by ID
  
 
