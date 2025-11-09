@@ -43,6 +43,8 @@ source venv/bin/activate
 ## Install dependencies
 pip install -r requirements.txt
 
+---
+
 ##  Environment variables
 
 Create a .env file in the project root and add:
@@ -69,6 +71,8 @@ http://localhost:4001
  
 Swagger docs at:
 http://localhost:4001/docs
+
+---
 
 ##  API Endpoints
  
