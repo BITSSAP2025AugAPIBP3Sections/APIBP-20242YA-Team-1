@@ -19,6 +19,7 @@ import {
 interface AnalyticsChartProps {
   title: string;
   type: "bar" | "line" | "pie";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[];
   dataKey?: string;
   xAxisKey?: string;
