@@ -15,12 +15,12 @@ auth_bp = Blueprint("auth_bp", __name__)
 google_auth_service = GoogleAuthService()
 user_auth_service = UserAuthService()
 
-@auth_bp.route("/auth/login", methods=["GET"])
+@auth_bp.route("/api/v1/auth/login", methods=["GET"])
 def login():
     auth_url = google_auth_service.get_authorization_url()
     return jsonify({"auth_url": auth_url})
 
-@auth_bp.route("/oauth2callback")
+@auth_bp.route("/api/v1/oauth2callback")
 def callback():
     code = request.args.get("code")
     credentials = google_auth_service.exchange_code_for_token(code)
@@ -62,14 +62,14 @@ def callback():
     return response
 
 
-@auth_bp.route("/auth/logout", methods=["POST"])
+@auth_bp.route("/api/v1/auth/logout", methods=["POST"])
 def logout():
     response = jsonify({"message": "Logged out successfully"})
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/api/v1/login", methods=["POST"])
 def login_email():
     data = request.get_json() or {}
     email = data.get("email")
@@ -108,7 +108,7 @@ def login_email():
     return response, 200
 
 
-@auth_bp.route("/register", methods=["POST"])
+@auth_bp.route("/api/v1/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
     email = data.get("email")
@@ -136,7 +136,7 @@ def register():
     return response, 201
 
 
-@auth_bp.route("/delete-user", methods=["DELETE"]) 
+@auth_bp.route("/api/v1/delete-user", methods=["DELETE"])
 def delete_user():
     data = request.get_json() or {}
     user_id = data.get("user_id")
@@ -145,12 +145,12 @@ def delete_user():
         return jsonify({"message": message}), 200
     return jsonify({"error": message}), 404
 
-@auth_bp.route("/users", methods=["GET"])
+@auth_bp.route("/api/v1/users", methods=["GET"])
 def list_users():
     users = user_auth_service.list_users()
     return jsonify({"users": users}), 200
 
-@auth_bp.route("/auth/refresh", methods=["POST"])
+@auth_bp.route("/api/v1/auth/refresh", methods=["POST"])
 def refresh():
     refresh_token = (
         request.cookies.get("refresh_token")
@@ -174,7 +174,7 @@ def refresh():
     )
     return response, 200
 
-@auth_bp.route("/auth/me", methods=["GET"])
+@auth_bp.route("/api/v1/auth/me", methods=["GET"])
 def get_current_user():
     access_token = request.cookies.get("access_token")
     if not access_token:

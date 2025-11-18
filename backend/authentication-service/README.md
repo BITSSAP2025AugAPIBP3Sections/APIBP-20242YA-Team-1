@@ -77,17 +77,17 @@ http://localhost:4001/docs
 
 ##  API Endpoints
 
-| Method | Endpoint          | Description                             |
-|--------|------------------|-----------------------------------------|
-| GET    | /                | Health check                            |
-| GET    | /auth/login      | Generate Google OAuth2 consent URL      |
-| GET    | /oauth2callback  | Handle Google OAuth2 callback           |
-| POST   | /register        | Register new user                       |
-| POST   | /login           | Login with email & password             |
-| POST   | /auth/refresh    | Refresh access token                    |
-| POST   | /auth/logout     | Logout user                             |
-| GET    | /users           | Fetch all users                         |
-| DELETE | /delete-user     | Delete user by ID                       |
+| Method | Endpoint                | Description                             |
+|--------|------------------------ |-----------------------------------------|
+| GET    | /api/v1/                | Health check                            |
+| GET    | /api/v1/auth/login      | Generate Google OAuth2 consent URL      |
+| GET    | /api/v1/oauth2callback  | Handle Google OAuth2 callback           |
+| POST   | /api/v1/register        | Register new user                       |
+| POST   | /api/v1/login           | Login with email & password             |
+| POST   | /api/v1/auth/refresh    | Refresh access token                    |
+| POST   | /api/v1/auth/logout     | Logout user                             |
+| GET    | /api/v1/users           | Fetch all users                         |
+| DELETE | /api/v1/delete-user     | Delete user by ID                       |
 
 
 

@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const resp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, {
+        const resp = await fetch(`${AUTH_SERVICE_URL}/api/v1/auth/me`, {
           credentials: 'include', // sends cookies
         });
         const data = await resp.json();
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${AUTH_SERVICE_URL}/register`, {
+      const resp = await fetch(`${AUTH_SERVICE_URL}/api/v1/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${AUTH_SERVICE_URL}/login`, {
+      const resp = await fetch(`${AUTH_SERVICE_URL}/api/v1/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
-      const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+      const response = await fetch(`${AUTH_SERVICE_URL}/api/v1/auth/login`, {
         credentials: "include",
       });
   
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async () => {
     try {
-      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+      await fetch(`${AUTH_SERVICE_URL}/api/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include', 
       });

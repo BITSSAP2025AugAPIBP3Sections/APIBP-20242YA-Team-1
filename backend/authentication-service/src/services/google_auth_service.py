@@ -10,7 +10,8 @@ class GoogleAuthService:
     def __init__(self):
         self.client_id = os.getenv("GOOGLE_CLIENT_ID")
         self.client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+        # Ensure redirect_uri uses /api/v1/oauth2callback by default
+        self.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:4001/api/v1/oauth2callback")
 
         service_dir = os.path.dirname(os.path.abspath(__file__))
         root_dir = os.path.abspath(os.path.join(service_dir, "..", ".."))
@@ -30,6 +31,7 @@ class GoogleAuthService:
         )
 
     def get_authorization_url(self):
+        print("Using redirect URI:", self.flow.redirect_uri)
         auth_url, _ = self.flow.authorization_url(prompt="consent")
         return auth_url
 

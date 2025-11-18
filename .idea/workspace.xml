@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="122aa2a0-c9cf-4496-be4e-396c32bb10c6" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend/authentication-service/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Frontend/src/contexts/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/src/contexts/AuthContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/authentication-service/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/backend/authentication-service/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/authentication-service/src/controllers/auth_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/authentication-service/src/controllers/auth_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/authentication-service/src/routes/swagger_auth_service.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/authentication-service/src/routes/swagger_auth_service.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/authentication-service/src/services/google_auth_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/authentication-service/src/services/google_auth_service.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="34pw3jyb8l8dRThSGZEDBDHL5a7" />
+  <component name="ProjectViewState">
+    <option name="autoscrollFromSource" value="true" />
+    <option name="autoscrollToSource" value="true" />
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "feature/authentication-service",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/I528933/Desktop/class-repo/APIBP-20242YA-Team-1"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="122aa2a0-c9cf-4496-be4e-396c32bb10c6" name="Changes" comment="" />
+      <created>1761923623902</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1761923623902</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.py" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

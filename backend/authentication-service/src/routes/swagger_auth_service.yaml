@@ -5,12 +5,12 @@ info:
   description: >
     This service handles Google OAuth2 authentication flow and simple email/password registration & login.
 host: localhost:4001
-basePath: /
+basePath: /api/v1
 schemes:
   - http
 
 servers:
-  - url: http://localhost:4001
+  - url: http://localhost:4001/api/v1
     description: Local development server
     
 paths:
@@ -215,7 +215,16 @@ paths:
           description: Invalid or expired refresh token
           schema:
             $ref: '#/definitions/ErrorResponse'
-
+  /auth/me:
+    get:
+      summary: Get current authenticated user
+      tags:
+        - Utility
+      responses:
+        "200":
+          description: Current user info
+          schema:
+            $ref: '#/definitions/User'
 definitions:
   User:
     type: object
@@ -282,4 +291,3 @@ definitions:
       error:
         type: string
         example: Invalid credentials
-
