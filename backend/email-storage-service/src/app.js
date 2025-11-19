@@ -15,8 +15,15 @@ import { getGoogleAuthURL, googleOAuthCallback } from "./controllers/authControl
 
 const app = express();
 app.disable("x-powered-by");
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(cors({
+  origin: ["http://localhost:8000", "http://localhost:5173", "http://localhost:3000", "http://localhost:4000"],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 app.use(cookieParser());
 app.use(requestLogger);
@@ -24,9 +31,20 @@ app.use(requestLogger);
 //db connection
 connectDB();
 
-// Rate limiters
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 }); // 60 reqs / 15 min
-const fetchLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 }); // 30 reqs / 15 min
+// Rate limiters with JSON responses
+const authLimiter = rateLimit({ 
+  windowMs: 15 * 60 * 1000, 
+  max: 100,
+  message: { message: "Too many authentication requests. Please try again later.", retryAfter: "15 minutes" }
+});
+
+const fetchLimiter = rateLimit({ 
+  windowMs: 15 * 60 * 1000, 
+  max: 50,
+  message: { message: "Too many fetch requests. Please wait before retrying.", retryAfter: "15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 /**
  * ============================================================================

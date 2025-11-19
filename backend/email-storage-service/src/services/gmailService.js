@@ -72,6 +72,9 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
   }
 
   let uploadedCount = 0;
+  const uploadedFiles = []; // Track uploaded files details
+  const vendorsDetected = new Set();
+
   for (const msg of emails) {
     const message = await gmail.users.messages.get({
       userId: "me",
@@ -84,6 +87,7 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
     const subjectHeader = 
       headers.find((h) => h.name === "Subject")?.value || "";
     const vendor = detectVendor(fromHeader, subjectHeader);
+    vendorsDetected.add(vendor);
 
     const parts = message.data.payload.parts || [];
     for (const part of parts) {
@@ -102,8 +106,17 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
         });
 
         const fileBuffer = Buffer.from(attachment.data.data, "base64");
-        await saveToDrive(user, vendor, fileBuffer, part.filename);
+        const drivePath = await saveToDrive(user, vendor, fileBuffer, part.filename);
         uploadedCount++;
+        
+        const uploadInfo = {
+          vendor,
+          filename: part.filename,
+          path: `${vendor}/invoices/${part.filename}`,
+          uploadedAt: new Date().toISOString()
+        };
+        uploadedFiles.push(uploadInfo);
+        
         logger.info(`Uploaded file ${uploadedCount}`, { vendor, filename: part.filename });
       }
     }
@@ -121,6 +134,8 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
 
   return { 
     totalProcessed: emails.length,
-    filesUploaded: uploadedCount 
+    filesUploaded: uploadedCount,
+    uploadedFiles: uploadedFiles,
+    vendorsDetected: Array.from(vendorsDetected)
   };
 };

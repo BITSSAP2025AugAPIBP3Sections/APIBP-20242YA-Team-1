@@ -7,6 +7,7 @@ import {
   ChevronsUpDown, 
   LogOut,
   LifeBuoy,
+  Mail,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +32,11 @@ const mainMenuItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Email Sync",
+    url: "/email-sync",
+    icon: Mail,
   },
   {
     title: "Invoices",
