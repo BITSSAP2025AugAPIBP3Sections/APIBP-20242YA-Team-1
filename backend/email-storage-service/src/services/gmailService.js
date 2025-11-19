@@ -20,11 +20,12 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
 
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-  const fetchFrom = user.lastSyncedAt
-    ? Math.floor(new Date(user.lastSyncedAt).getTime() / 1000)
-    : Math.floor(new Date(fromDate).getTime() / 1000);
+  const { emails: emailList, onlyPdf = true, forceSync = false } = filters || {};
 
-  const { vendor: vendorFilter, email: emailFilter, onlyPdf = true } = filters || {};
+  // Determine fetch date: use fromDate if forceSync=true or lastSyncedAt is null
+  const fetchFrom = (forceSync || !user.lastSyncedAt)
+    ? Math.floor(new Date(fromDate).getTime() / 1000)
+    : Math.floor(new Date(user.lastSyncedAt).getTime() / 1000);
 
   // Build Gmail search query
   let query = `after:${fetchFrom} has:attachment`;
@@ -33,9 +34,25 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
   } else {
     query += ` (filename:pdf OR filename:jpg OR filename:jpeg OR filename:png)`;
   }
-  if (emailFilter) {
-    query += ` from:${emailFilter}`;
+  
+  // Support multiple email addresses with OR logic
+  if (emailList && emailList.length > 0) {
+    if (emailList.length === 1) {
+      query += ` from:${emailList[0]}`;
+    } else {
+      const emailQuery = emailList.map(e => `from:${e}`).join(' OR ');
+      query += ` (${emailQuery})`;
+    }
   }
+
+  logger.info(`Gmail search query: ${query}`, { 
+    userId, 
+    fetchFrom: new Date(fetchFrom * 1000).toISOString(),
+    emailFilters: emailList || "ALL",
+    emailCount: emailList ? emailList.length : 0,
+    forceSync,
+    lastSyncedAt: user.lastSyncedAt 
+  });
 
   const response = await gmail.users.messages.list({
     userId: "me",
@@ -43,7 +60,18 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
   });
 
   const emails = response.data.messages || [];
+  logger.info(`Found ${emails.length} emails matching query`, { userId, query });
 
+  if (emails.length === 0) {
+    logger.warn("No emails found matching the search criteria", { 
+      userId, 
+      query, 
+      fetchFrom: new Date(fetchFrom * 1000).toISOString(),
+      lastSyncedAt: user.lastSyncedAt 
+    });
+  }
+
+  let uploadedCount = 0;
   for (const msg of emails) {
     const message = await gmail.users.messages.get({
       userId: "me",
@@ -53,13 +81,9 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
     const headers = message.data.payload.headers;
     const fromHeader =
       headers.find((h) => h.name === "From")?.value || "Unknown";
-    const vendor = detectVendor(fromHeader);
-
-    // If a vendor filter is specified, skip non-matching vendors
-    if (vendorFilter && vendor !== vendorFilter) {
-      logger.debug("Skipping message due to vendor filter", { vendor, vendorFilter, messageId: msg.id });
-      continue;
-    }
+    const subjectHeader = 
+      headers.find((h) => h.name === "Subject")?.value || "";
+    const vendor = detectVendor(fromHeader, subjectHeader);
 
     const parts = message.data.payload.parts || [];
     for (const part of parts) {
@@ -79,6 +103,8 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
 
         const fileBuffer = Buffer.from(attachment.data.data, "base64");
         await saveToDrive(user, vendor, fileBuffer, part.filename);
+        uploadedCount++;
+        logger.info(`Uploaded file ${uploadedCount}`, { vendor, filename: part.filename });
       }
     }
   }
@@ -87,6 +113,14 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
     lastSyncedAt: new Date()  // Store current time as last successful sync
   });
 
+  logger.info("Email fetch completed", { 
+    userId, 
+    totalEmailsProcessed: emails.length, 
+    filesUploaded: uploadedCount 
+  });
 
-  return { totalProcessed: emails.length };
+  return { 
+    totalProcessed: emails.length,
+    filesUploaded: uploadedCount 
+  };
 };
