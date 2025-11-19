@@ -42,7 +42,9 @@ app/
     ```
 4.  **Run the application:**
     ```bash
-    uvicorn app.main:app --reload
+    uvicorn app.main:app --reload 
+    or 
+    python -m app.main
     ```
 5.  **View API Documentation:**
-    Open your browser and go to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to see the Swagger UI.
+    Open your browser and go to [http://0.0.0.0:4003/docs](http://0.0.0.0:4003/docs) to see the Swagger UI.
