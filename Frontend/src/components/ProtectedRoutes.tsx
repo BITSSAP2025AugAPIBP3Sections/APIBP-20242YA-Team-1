@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import Analytics from "@/pages/Analytics";
 
 const ProtectedRoutes = () => {
   const { sidebarWidth, isResizing, startResizing, stopResizing } = useResizableSidebar({
@@ -86,11 +87,11 @@ const ProtectedLayout = ({
           <div className="max-w-7xl mx-auto p-6">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
               <Route path="/reset" element={<Navigate to="/" replace />} />
-              <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
