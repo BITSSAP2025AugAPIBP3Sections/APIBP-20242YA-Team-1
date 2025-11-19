@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import EmailSync from "@/pages/EmailSync";
 import NotFound from "@/pages/NotFound";
+import Analytics from "@/pages/Analytics";
 
 const ProtectedRoutes = () => {
   const { sidebarWidth, isResizing, startResizing, stopResizing } = useResizableSidebar({
@@ -88,6 +89,7 @@ const ProtectedLayout = ({
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/email-sync" element={<EmailSync />} />
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
