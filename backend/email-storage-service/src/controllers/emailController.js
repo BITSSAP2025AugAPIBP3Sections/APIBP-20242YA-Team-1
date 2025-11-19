@@ -1,5 +1,5 @@
 import { fetchAndProcessEmails } from "../services/gmailService.js";
-import scheduleEmailJob from "../services/schedulerService.js"; // Only if scheduling is used
+import scheduleEmailJob, { getScheduledJobs, cancelScheduledJob } from "../services/schedulerService.js";
 import User from "../models/User.js";
 
 export const fetchEmailsController = async (req, res) => {
@@ -82,9 +82,10 @@ export const fetchEmailsController = async (req, res) => {
 
     // Scheduled (Auto Fetch using cron)
     if (schedule?.type === "auto" && schedule?.frequency) {
-      scheduleEmailJob(userId, fromDate, schedule.frequency, { emails: emailList, onlyPdf, forceSync });
+      const jobId = scheduleEmailJob(userId, fromDate, schedule.frequency, { emails: emailList, onlyPdf, forceSync });
       return res.status(200).json({
         message: `Emails will now be fetched automatically every ${schedule.frequency}.`,
+        jobId: jobId,
         filtersUsed: { emails: emailList, emailCount: emailList ? emailList.length : 0, onlyPdf, fromDate, forceSync }
       });
     }
@@ -128,6 +129,85 @@ export const fetchEmailsController = async (req, res) => {
       message: userMessage,
       details: details,
       suggestions: suggestions.length > 0 ? suggestions : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Get all scheduled jobs for a user
+ */
+export const getScheduledJobsController = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId || !/^[a-f0-9]{24}$/.test(userId)) {
+      return res.status(400).json({
+        message: "Invalid user ID.",
+        details: "User ID must be a valid 24-character hexadecimal MongoDB ObjectId.",
+        providedValue: userId
+      });
+    }
+
+    const jobs = getScheduledJobs(userId);
+    return res.status(200).json({
+      message: "Scheduled jobs retrieved successfully.",
+      count: jobs.length,
+      jobs: jobs
+    });
+
+  } catch (error) {
+    console.error("Error in getScheduledJobsController:", error);
+    return res.status(500).json({
+      message: "Failed to retrieve scheduled jobs.",
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Cancel a scheduled job
+ */
+export const cancelScheduledJobController = async (req, res) => {
+  try {
+    const { userId, jobId } = req.params;
+
+    if (!userId || !/^[a-f0-9]{24}$/.test(userId)) {
+      return res.status(400).json({
+        message: "Invalid user ID.",
+        details: "User ID must be a valid 24-character hexadecimal MongoDB ObjectId.",
+        providedValue: userId
+      });
+    }
+
+    if (!jobId) {
+      return res.status(400).json({
+        message: "Job ID is required.",
+        details: "Please provide a valid job ID to cancel."
+      });
+    }
+
+    const success = cancelScheduledJob(userId, jobId);
+    
+    if (success) {
+      return res.status(200).json({
+        message: "Scheduled job cancelled successfully.",
+        jobId: jobId
+      });
+    } else {
+      return res.status(404).json({
+        message: "Scheduled job not found.",
+        details: `No job found with ID ${jobId} for user ${userId}.`,
+        suggestions: ["Verify the job ID is correct", "Check if the job was already cancelled"]
+      });
+    }
+
+  } catch (error) {
+    console.error("Error in cancelScheduledJobController:", error);
+    return res.status(500).json({
+      message: "Failed to cancel scheduled job.",
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }

@@ -2,8 +2,39 @@ import cron from "node-cron";
 import { fetchAndProcessEmails } from "./gmailService.js";
 import logger from "../utils/logger.js";
 
-// Store scheduled jobs to prevent duplicates
+// Store scheduled jobs with metadata
 const scheduledJobs = {};
+
+/**
+ * Get all scheduled jobs for a user
+ */
+export function getScheduledJobs(userId) {
+  const userJobs = Object.entries(scheduledJobs)
+    .filter(([jobId]) => jobId.startsWith(userId))
+    .map(([jobId, jobData]) => ({
+      jobId,
+      userId: jobData.userId,
+      filters: jobData.filters,
+      frequency: jobData.frequency,
+      createdAt: jobData.createdAt,
+      status: "active"
+    }));
+  
+  return userJobs;
+}
+
+/**
+ * Cancel a specific scheduled job
+ */
+export function cancelScheduledJob(userId, jobId) {
+  if (scheduledJobs[jobId]) {
+    scheduledJobs[jobId].job.stop();
+    delete scheduledJobs[jobId];
+    logger.info(`Cancelled scheduled job ${jobId} for user ${userId}`);
+    return true;
+  }
+  return false;
+}
 
 /**
  * Schedule automatic email fetching
@@ -13,10 +44,13 @@ const scheduledJobs = {};
  * @param {object} filters (email, vendor, onlyPdf)
  */
 export default function scheduleEmailJob(userId, fromDate, frequency, filters) {
-  // If already scheduled → avoid duplication
-  if (scheduledJobs[userId]) {
-    logger.warn(`Job for user ${userId} already exists. Skipping new schedule.`);
-    return;
+  // Generate unique job ID
+  const jobId = `${userId}_${Date.now()}_${frequency}`;
+  
+  // Check if this exact job already exists
+  if (scheduledJobs[jobId]) {
+    logger.warn(`Job ${jobId} already exists. Skipping new schedule.`);
+    return jobId;
   }
 
   let cronTime;
@@ -40,17 +74,27 @@ export default function scheduleEmailJob(userId, fromDate, frequency, filters) {
 
   // Create scheduled job
   const job = cron.schedule(cronTime, async () => {
-    logger.info(`Running scheduled email fetch for user ${userId}`);
+    logger.info(`Running scheduled email fetch for user ${userId}`, { jobId });
     try {
       await fetchAndProcessEmails(userId, fromDate, filters);
-      logger.info(`Emails processed successfully for user ${userId}`);
+      logger.info(`Emails processed successfully for user ${userId}`, { jobId });
     } catch (err) {
-      logger.error(err, { userId, phase: "scheduledFetch" });
+      logger.error(err, { userId, jobId, phase: "scheduledFetch" });
     }
   });
 
-  scheduledJobs[userId] = job;
+  // Store job with metadata
+  scheduledJobs[jobId] = {
+    job,
+    userId,
+    filters: { ...filters, fromDate },
+    frequency,
+    createdAt: new Date().toISOString()
+  };
+  
   job.start();
 
-  logger.info(`Scheduled job for user ${userId}, frequency=${frequency}`);
+  logger.info(`Scheduled job for user ${userId}`, { jobId, frequency });
+  
+  return jobId;
 }
