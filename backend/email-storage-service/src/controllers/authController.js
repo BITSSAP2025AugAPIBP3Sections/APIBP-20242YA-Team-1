@@ -22,7 +22,8 @@ export const getGoogleAuthURL = (req, res) => {
     prompt: "consent",
     scope: SCOPES,
   });
-  res.json({ url });
+  // Redirect to Google OAuth instead of returning JSON
+  res.redirect(url);
 };
 
 // Step 2: Callback - Google returns code
@@ -48,7 +49,7 @@ export const googleOAuthCallback = async (req, res) => {
     // Fetch existing user to preserve refresh token if Google didn't return one
     const existing = await User.findOne({ email });
 
-    await User.findOneAndUpdate(
+    const user = await User.findOneAndUpdate(
       { email },
       {
         googleAccessToken: tokens.access_token || existing?.googleAccessToken,
@@ -57,10 +58,9 @@ export const googleOAuthCallback = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({
-      message: "Google account connected successfully!",
-      email,
-    });
+    // Redirect to frontend email sync page with success message
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8000";
+    res.redirect(`${frontendUrl}/email-sync?connected=true&email=${encodeURIComponent(email)}&userId=${user._id}`);
   } catch (error) {
     let userMessage = "Google OAuth authentication failed.";
     let suggestions = [];

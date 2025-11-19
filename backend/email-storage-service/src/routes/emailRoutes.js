@@ -1,5 +1,5 @@
 import express from "express";
-import { fetchEmailsController } from "../controllers/emailController.js";
+import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
 import { getInvoicesByVendor, getVendorsByUser } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus } from "../controllers/userController.js";
 
@@ -172,5 +172,61 @@ router.get("/users/:userId/sync-status", getUserSyncStatus);
  *   }
  */
 router.delete("/users/:userId/sync-status", resetUserSyncStatus);
+
+/**
+ * @route   GET /api/v1/emails/schedule/:userId
+ * @desc    Get all scheduled email fetch jobs for a user
+ * @access  Public (requires valid userId)
+ * @consumers
+ *   - Frontend scheduled jobs management UI
+ *   - Admin dashboards
+ *   - Monitoring systems
+ * @requires
+ *   - userId: MongoDB ObjectId (path parameter)
+ * @returns {200} Success - Array of scheduled jobs
+ * @returns {400} Bad Request - Invalid userId format
+ * @returns {500} Server Error - Failed to retrieve jobs
+ * @example
+ *   GET /api/v1/emails/schedule/690c7d0ee107fb31784c1b1b
+ *   Response: {
+ *     "message": "Scheduled jobs retrieved successfully.",
+ *     "count": 2,
+ *     "jobs": [
+ *       {
+ *         "jobId": "690c7d0ee107fb31784c1b1b_1735123456789_hourly",
+ *         "userId": "690c7d0ee107fb31784c1b1b",
+ *         "filters": { "emails": ["ship-confirm@amazon.in"], "onlyPdf": true, "forceSync": false, "fromDate": "2024-01-01" },
+ *         "frequency": "hourly",
+ *         "createdAt": "2024-12-25T10:30:56.789Z",
+ *         "status": "active"
+ *       }
+ *     ]
+ *   }
+ */
+router.get("/emails/schedule/:userId", getScheduledJobsController);
+
+/**
+ * @route   DELETE /api/v1/emails/schedule/:userId/:jobId
+ * @desc    Cancel a scheduled email fetch job
+ * @access  Public (requires valid userId and jobId)
+ * @consumers
+ *   - Frontend scheduled jobs management UI
+ *   - Admin dashboards
+ *   - Automation cleanup scripts
+ * @requires
+ *   - userId: MongoDB ObjectId (path parameter)
+ *   - jobId: Unique job identifier (path parameter, format: userId_timestamp_frequency)
+ * @returns {200} Success - Job cancelled
+ * @returns {400} Bad Request - Invalid userId or missing jobId
+ * @returns {404} Not Found - Job not found
+ * @returns {500} Server Error - Failed to cancel job
+ * @example
+ *   DELETE /api/v1/emails/schedule/690c7d0ee107fb31784c1b1b/690c7d0ee107fb31784c1b1b_1735123456789_hourly
+ *   Response: {
+ *     "message": "Scheduled job cancelled successfully.",
+ *     "jobId": "690c7d0ee107fb31784c1b1b_1735123456789_hourly"
+ *   }
+ */
+router.delete("/emails/schedule/:userId/:jobId", cancelScheduledJobController);
 
 export default router;
