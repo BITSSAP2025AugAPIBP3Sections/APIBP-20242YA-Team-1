@@ -90,6 +90,7 @@ const ProtectedLayout = ({
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
               <Route path="/reset" element={<Navigate to="/" replace />} />
+              <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

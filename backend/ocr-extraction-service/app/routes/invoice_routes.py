@@ -3,7 +3,7 @@ from app.services.pdf_extractor import extract_text_from_pdf
 from app.services.gemini_client import extract_invoice_json_from_text
 from app.models.ocr_models import GeminiResponse
 
-router = APIRouter(prefix="/api/invoice", tags=["Invoice API"])
+router = APIRouter(prefix="/invoice", tags=["Invoice API"])
 
 @router.post("/extract", response_model=GeminiResponse, summary="Upload a PDF and extract structured invoice JSON")
 async def extract_invoice(file: UploadFile = File(...)):

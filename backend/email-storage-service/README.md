@@ -1,6 +1,7 @@
 # Email Storage Service
 
 ## Overview
+
 Email Storage Service connects a user's Google account, fetches invoice email attachments from Gmail, and stores them in Google Drive organized by vendor. It exposes endpoints to start Google OAuth, receive the OAuth callback, and fetch/process emails. The service persists Google OAuth tokens and sync metadata in MongoDB.
 
 **🎯 Multi-Vendor Support:** Automatically detects and organizes invoices from popular vendors including Amazon, Flipkart, Zomato, Swiggy, Uber, and more. The intelligent vendor detection system analyzes email addresses and subject lines to accurately categorize invoices.
@@ -10,17 +11,6 @@ Email Storage Service connects a user's Google account, fetches invoice email at
 - MongoDB for user documents and token storage
 - Google APIs (Gmail and Drive)
 - Incremental sync using `lastSyncedAt`
-- **Smart vendor detection** for Amazon, Zomato, Flipkart, and other major vendors
-- Vendor-wise foldering: `invoiceAutomation/<Vendor>/invoices`
-- Swagger UI available at `/api-docs`
-
-## Supported Vendors
-The service includes intelligent detection for:
-- 🛒 **E-commerce:** Amazon, Flipkart, Myntra
-- 🍔 **Food Delivery:** Zomato, Blinkit (formerly Grofers), Swiggy
-- 🚗 **Transportation:** Uber, Ola
-- ✈️ **Travel:** MakeMyTrip, Goibibo
-- 📧 **Custom Vendors:** Any business email domain or personal email sender
 
 ## Prerequisites
 - Google Cloud project with OAuth 2.0 Client ID (Web application)

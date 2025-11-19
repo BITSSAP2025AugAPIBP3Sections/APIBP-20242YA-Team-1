@@ -28,13 +28,13 @@ app.add_middleware(
 )
 
 # Include REST router
-app.include_router(chat.router, prefix="/api")
+app.include_router(chat.router, prefix="/api/v1")
 # Include GraphQL router (no /api prefix to follow common convention)
 app.include_router(graphql_router, prefix="/graphql")
 
 @app.get("/", tags=["Root"])
 async def root():
-    return {"message": "Welcome to VendorIQ Chat Service 🚀", "docs": "/docs", "health": "/api/health"}
+    return {"message": "Welcome to VendorIQ Chat Service 🚀", "docs": "/docs", "health": "/api/v1/health"}
 
 
 if __name__ == "__main__":

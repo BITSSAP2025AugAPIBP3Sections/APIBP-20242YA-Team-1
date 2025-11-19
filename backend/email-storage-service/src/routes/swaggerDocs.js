@@ -32,6 +32,11 @@ export const swaggerDocs = {
     { name: "Drive", description: "Google Drive file and folder listing operations" },
     { name: "User", description: "User management and sync status operations" },
   ],
+  tags: [
+    { name: "System" },
+    { name: "Auth" },
+    { name: "Email" },
+  ],
   paths: {
     "/": {
       get: {

@@ -19,7 +19,7 @@ export const fetchEmailsController = async (req, res) => {
       emailList = email.split(',').map(e => e.trim()).filter(e => e.length > 0);
     }
 
-    // ✅ Required fields check
+    // Required fields check
     if (!userId || !fromDate) {
       return res.status(400).json({
         message: "Missing required fields: 'userId' and 'fromDate' are required.",
@@ -70,7 +70,7 @@ export const fetchEmailsController = async (req, res) => {
       lastSyncedAt: dbUser.lastSyncedAt 
     });
 
-    // ✅ Manual Fetch Immediately
+    //  Manual Fetch Immediately
     if (schedule === "manual") {
       const result = await fetchAndProcessEmails(userId, fromDate, { emails: emailList, onlyPdf, forceSync });
       return res.status(200).json({
@@ -80,7 +80,7 @@ export const fetchEmailsController = async (req, res) => {
       });
     }
 
-    // ✅ Scheduled (Auto Fetch using cron)
+    // Scheduled (Auto Fetch using cron)
     if (schedule?.type === "auto" && schedule?.frequency) {
       scheduleEmailJob(userId, fromDate, schedule.frequency, { emails: emailList, onlyPdf, forceSync });
       return res.status(200).json({
