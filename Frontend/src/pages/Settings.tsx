@@ -4,21 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, Database, FolderOpen, Mail, CheckCircle2, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-
-const EMAIL_SERVICE_URL = "http://localhost:4002";
-
-interface SyncStatus {
-  userId: string;
-  email: string;
-  lastSyncedAt: string | null;
-  hasGoogleConnection: boolean;
-  message: string;
-}
+import api, { type SyncStatus } from "@/services/api";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -26,6 +17,29 @@ const Settings = () => {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const fetchSyncStatus = useCallback(async () => {
+    if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, response } = await api.getUserSyncStatus(userId);
+
+      if (response.ok) {
+        setSyncStatus(data);
+        setIsConnected(data.hasGoogleConnection);
+      } else {
+        setSyncStatus(null);
+        setIsConnected(false);
+      }
+    } catch (error) {
+      setIsConnected(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     // Save userId to localStorage whenever it changes
@@ -36,7 +50,7 @@ const Settings = () => {
     if (userId && /^[a-f0-9]{24}$/i.test(userId)) {
       fetchSyncStatus();
     }
-  }, [userId]);
+  }, [userId, fetchSyncStatus]);
 
   // Handle OAuth callback redirect (if user returns here)
   useEffect(() => {
@@ -63,35 +77,11 @@ const Settings = () => {
       // Refresh sync status
       setTimeout(() => fetchSyncStatus(), 1000);
     }
-  }, []);
-
-  const fetchSyncStatus = async () => {
-    if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${EMAIL_SERVICE_URL}/api/v1/users/${userId}/sync-status`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setSyncStatus(data);
-        setIsConnected(data.hasGoogleConnection);
-      } else {
-        setSyncStatus(null);
-        setIsConnected(false);
-      }
-    } catch (error) {
-      setIsConnected(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [toast, fetchSyncStatus]);
 
   const connectGoogleAccount = () => {
     // Direct redirect to OAuth
-    window.location.href = `${EMAIL_SERVICE_URL}/auth/google`;
+    window.location.href = api.getGoogleAuthUrl();
   };
 
   return (

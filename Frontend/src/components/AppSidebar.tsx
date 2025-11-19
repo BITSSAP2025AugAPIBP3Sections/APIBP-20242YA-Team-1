@@ -8,6 +8,7 @@ import {
   LogOut,
   LifeBuoy,
   Mail,
+  Clock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +38,11 @@ const mainMenuItems = [
     title: "Email Sync",
     url: "/email-sync",
     icon: Mail,
+  },
+  {
+    title: "Scheduled Jobs",
+    url: "/scheduled-jobs",
+    icon: Clock,
   },
   {
     title: "Invoices",
@@ -83,19 +89,19 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <FileText className="h-5 w-5 text-primary-foreground" />
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary shrink-0">
+            <FileText className="h-6 w-6 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-lg font-semibold">vendorIQ.ai</h1>
-            <p className="text-xs text-muted-foreground">Smart Invoice Management</p>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <h1 className="text-xl font-bold">vendorIQ.ai</h1>
+            <p className="text-sm text-muted-foreground">Smart Invoice Management</p>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm font-semibold">Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
@@ -104,10 +110,11 @@ export function AppSidebar() {
                     asChild
                     isActive={location.pathname === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
+                    tooltip={item.title}
                   >
                     <Link to={item.url} onClick={handleNavClick}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-base font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -117,7 +124,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Other</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm font-semibold">Other</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {secondaryMenuItems.map((item) => (
@@ -126,10 +133,11 @@ export function AppSidebar() {
                     asChild
                     isActive={location.pathname === item.url}
                     data-testid={`link-${item.title.toLowerCase()}`}
+                    tooltip={item.title}
                   >
                     <Link to={item.url} onClick={handleNavClick}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-5 w-5" />
+                      <span className="text-base font-medium">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -149,11 +157,11 @@ export function AppSidebar() {
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
                 {(user?.username?.[0] || user?.email?.[0] || 'U').toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium truncate">{user?.username}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <div className="flex-1 min-w-0 text-left group-data-[collapsible=icon]:hidden">
+                <p className="text-base font-semibold truncate">{user?.username}</p>
+                <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content
@@ -175,16 +183,16 @@ export function AppSidebar() {
             <div className="space-y-1">
               <DropdownMenu.Item
                 onSelect={(e) => { e.preventDefault(); navigate('/contact'); }}
-                className="flex items-center gap-2 cursor-pointer rounded-sm px-2 py-2 text-sm outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="flex items-center gap-3 cursor-pointer rounded-sm px-3 py-2.5 text-base outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
-                <LifeBuoy className="h-4 w-4" />
+                <LifeBuoy className="h-5 w-5" />
                 <span>Contact Us</span>
               </DropdownMenu.Item>
               <DropdownMenu.Item
                 onSelect={(e) => { e.preventDefault(); handleLogout(); }}
-                className="flex items-center gap-2 cursor-pointer rounded-sm px-2 py-2 text-sm outline-none transition-colors hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-700"
+                className="flex items-center gap-3 cursor-pointer rounded-sm px-3 py-2.5 text-base outline-none transition-colors hover:bg-red-100 dark:hover:bg-red-900/40 hover:text-red-700"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-5 w-5" />
                 <span>Logout</span>
               </DropdownMenu.Item>  
             </div>

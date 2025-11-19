@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -16,14 +16,7 @@ import {
   Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface SyncStatus {
-  userId: string;
-  email: string;
-  lastSyncedAt: string | null;
-  hasGoogleConnection: boolean;
-  message: string;
-}
+import api, { type SyncStatus, type Vendor as VendorFolder, type FetchEmailsRequest } from "@/services/api";
 
 interface EmailLog {
   id: string;
@@ -32,16 +25,10 @@ interface EmailLog {
   message: string;
 }
 
-interface VendorFolder {
-  id: string;
-  name: string;
-  webViewLink: string;
-}
-
-const EMAIL_SERVICE_URL = "http://localhost:4002";
-
 const EmailSync = () => {
   const { toast } = useToast();
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Load from localStorage to persist across page changes
   const [userId, setUserId] = useState(() => localStorage.getItem("tempUserId") || "690c7d0ee107fb31784c1b1b");
   const [fromDate, setFromDate] = useState(() => localStorage.getItem("emailSyncFromDate") || new Date().toISOString().split('T')[0]);
@@ -94,6 +81,16 @@ const EmailSync = () => {
     localStorage.setItem("emailSyncForceSync", String(forceSync));
   }, [forceSync]);
 
+  // Cleanup progress interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    };
+  }, []);
+
   // Check sync status on mount and when userId changes
   useEffect(() => {
     if (userId && /^[a-f0-9]{24}$/i.test(userId)) {
@@ -137,15 +134,14 @@ const EmailSync = () => {
 
     setIsLoadingStatus(true);
     try {
-      const response = await fetch(`${EMAIL_SERVICE_URL}/api/v1/users/${userId}/sync-status`);
-      const data = await response.json();
+      const { data, response } = await api.getUserSyncStatus(userId);
 
       if (response.ok) {
         setSyncStatus(data);
         setIsConnected(data.hasGoogleConnection);
         addLog("success", `Sync status loaded: ${data.message}`);
       } else {
-        addLog("error", data.message || data.details || "Failed to fetch sync status");
+        addLog("error", data.message || "Failed to fetch sync status");
         setSyncStatus(null);
         setIsConnected(false);
       }
@@ -160,7 +156,7 @@ const EmailSync = () => {
   const connectGoogleAccount = () => {
     addLog("info", "Redirecting to Google OAuth...");
     // Use window.location for full page redirect (not new tab)
-    window.location.href = `${EMAIL_SERVICE_URL}/auth/google`;
+    window.location.href = api.getGoogleAuthUrl();
   };
 
   const fetchEmails = async () => {
@@ -198,8 +194,14 @@ const EmailSync = () => {
       addLog("info", `Filtering by vendor emails: ${vendorEmails}`);
     }
 
+    // Clear any existing progress interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+
     // Simulate progress (since backend processes all at once)
-    const progressInterval = setInterval(() => {
+    progressIntervalRef.current = setInterval(() => {
       setFetchProgress(prev => {
         if (prev.total === 0) return { current: 0, total: 100, message: "Connecting to Gmail..." };
         if (prev.current < 90) {
@@ -214,22 +216,12 @@ const EmailSync = () => {
     }, 1000);
 
     try {
-      const response = await fetch(`${EMAIL_SERVICE_URL}/api/v1/email/fetch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      clearInterval(progressInterval);
-      setFetchProgress({ current: 100, total: 100, message: "Processing complete!" });
+      const { data, response } = await api.fetchEmails(body as FetchEmailsRequest);
 
       // Check if response is JSON
       const contentType = response.headers.get("content-type");
-      let data;
       
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
+      if (!contentType || !contentType.includes("application/json")) {
         // Not JSON - likely rate limit or error HTML
         const text = await response.text();
         addLog("error", `Server returned non-JSON response: ${text.substring(0, 200)}`);
@@ -240,6 +232,8 @@ const EmailSync = () => {
         });
         return;
       }
+
+      setFetchProgress({ current: 100, total: 100, message: "Processing complete!" });
 
       if (response.ok) {
         // Show summary
@@ -258,12 +252,12 @@ const EmailSync = () => {
         // Show detailed upload information
         if (data.result?.uploadedFiles && data.result.uploadedFiles.length > 0) {
           addLog("info", `📁 Files uploaded to Drive:`);
-          data.result.uploadedFiles.forEach((file: any, index: number) => {
+          data.result.uploadedFiles.forEach((file, index) => {
             addLog("success", `  ✓ ${index + 1}. ${file.vendor}/invoices/${file.filename}`);
           });
         }
 
-        if (data.schedule && scheduleType === "auto") {
+        if (data.jobId && scheduleType === "auto") {
           addLog("success", `⏰ Scheduled ${frequency} fetch created (Job ID: ${data.jobId})`);
         }
 
@@ -297,7 +291,6 @@ const EmailSync = () => {
         });
       }
     } catch (error) {
-      clearInterval(progressInterval);
       setFetchProgress({ current: 0, total: 0, message: "" });
       addLog("error", `Network error: ${error instanceof Error ? error.message : "Unknown error"}`);
       toast({
@@ -306,6 +299,11 @@ const EmailSync = () => {
         variant: "destructive",
       });
     } finally {
+      // Always clear the progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setIsFetching(false);
     }
   };
@@ -319,14 +317,13 @@ const EmailSync = () => {
     addLog("info", "Fetching vendor folders from Google Drive...");
 
     try {
-      const response = await fetch(`${EMAIL_SERVICE_URL}/api/v1/drive/users/${userId}/vendors`);
-      const data = await response.json();
+      const { data, response } = await api.getVendors(userId);
 
       if (response.ok && data.vendors) {
         setVendorFolders(data.vendors);
         addLog("success", `📁 Found ${data.vendors.length} vendor folders`);
       } else {
-        addLog("error", data.message || "Failed to fetch vendor folders");
+        addLog("error", "Failed to fetch vendor folders");
         setVendorFolders([]);
       }
     } catch (error) {
@@ -343,11 +340,7 @@ const EmailSync = () => {
     addLog("processing", "Resetting sync status...");
 
     try {
-      const response = await fetch(`${EMAIL_SERVICE_URL}/api/v1/users/${userId}/sync-status/reset`, {
-        method: "POST",
-      });
-
-      const data = await response.json();
+      const { data, response } = await api.resetUserSyncStatus(userId);
 
       if (response.ok) {
         addLog("success", "✓ Sync status reset successfully");

@@ -106,7 +106,7 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
         });
 
         const fileBuffer = Buffer.from(attachment.data.data, "base64");
-        const drivePath = await saveToDrive(user, vendor, fileBuffer, part.filename);
+        await saveToDrive(user, vendor, fileBuffer, part.filename);
         uploadedCount++;
         
         const uploadInfo = {

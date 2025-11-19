@@ -60,7 +60,7 @@ export const googleOAuthCallback = async (req, res) => {
 
     // Redirect to frontend email sync page with success message
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8000";
-    res.redirect(`${frontendUrl}/email-sync?connected=true&email=${encodeURIComponent(email)}&userId=${user._id}`);
+    res.redirect(`${frontendUrl}/email-sync?connected=true&email=${encodeURIComponent(email)}&userId=${encodeURIComponent(user._id)}`);
   } catch (error) {
     let userMessage = "Google OAuth authentication failed.";
     let suggestions = [];

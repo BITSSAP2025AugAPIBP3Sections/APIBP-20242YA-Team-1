@@ -8,6 +8,9 @@ import { useEffect } from "react";
 import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import EmailSync from "@/pages/EmailSync";
+import ScheduledJobs from "@/pages/ScheduledJobs";
+import Vendors from "@/pages/Vendors";
+import Invoices from "@/pages/Invoices";
 import NotFound from "@/pages/NotFound";
 
 const ProtectedRoutes = () => {
@@ -88,6 +91,9 @@ const ProtectedLayout = ({
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/email-sync" element={<EmailSync />} />
+              <Route path="/scheduled-jobs" element={<ScheduledJobs />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/invoices" element={<Invoices />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
