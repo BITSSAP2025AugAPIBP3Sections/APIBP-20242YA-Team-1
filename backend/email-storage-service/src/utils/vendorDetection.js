@@ -43,15 +43,15 @@ const KNOWN_VENDORS = {
  * detectVendor("orders@zomato.com", "Your Zomato Order") // Returns "Zomato"
  */
 export const detectVendor = (fromEmail = "", subject = "") => {
-  const emailMatch = fromEmail.match(/<(.+?)>/) || [null, fromEmail];
-  const email = emailMatch[1].trim().toLowerCase();
+const safeFromEmail = String(fromEmail);
+const emailMatch = safeFromEmail.match(/<(.+?)>/) || [null, safeFromEmail];
   
   // Validate email format
-  if (!email || !email.includes("@")) {
+  if (!emailMatch[1] || !emailMatch[1].includes("@")) {
     return "Unknown";
   }
 
-  const [username, domain] = email.split("@");
+  const [username, domain] = emailMatch[1].split("@");
 
   // Check against known vendor domains first (highest priority)
   for (const [pattern, vendorName] of Object.entries(KNOWN_VENDORS)) {

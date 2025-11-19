@@ -42,7 +42,8 @@ export const getVendorsByUser = async (req, res) => {
       });
     }
 
-    const vendors = await listVendorFolders(user);
+    const vendorsResult = await listVendorFolders(user);
+    const vendors = Array.isArray(vendorsResult) ? vendorsResult : [];
 
     return res.status(200).json({
       userId,
