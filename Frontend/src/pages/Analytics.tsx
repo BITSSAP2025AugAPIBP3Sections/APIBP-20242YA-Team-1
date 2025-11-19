@@ -1,5 +1,5 @@
 import { AnalyticsChart } from "@/components/AnalyticsChart";
-import { DashboardMetricCard } from "@/components/DashboardMetricCard";
+import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
 import { TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {

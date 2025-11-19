@@ -12,6 +12,7 @@ import ScheduledJobs from "@/pages/ScheduledJobs";
 import Vendors from "@/pages/Vendors";
 import Invoices from "@/pages/Invoices";
 import NotFound from "@/pages/NotFound";
+import Analytics from "@/pages/Analytics";
 
 const ProtectedRoutes = () => {
   const { sidebarWidth, isResizing, startResizing, stopResizing } = useResizableSidebar({
@@ -94,6 +95,7 @@ const ProtectedLayout = ({
               <Route path="/scheduled-jobs" element={<ScheduledJobs />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/invoices" element={<Invoices />} />
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
