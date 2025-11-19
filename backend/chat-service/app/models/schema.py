@@ -1,12 +1,18 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class LineItem(BaseModel):
+    item_description: Optional[str] = ""
+    quantity: Optional[str] = ""
+    unit_price: Optional[str] = ""
+    amount: Optional[str] = ""
+
 class Invoice(BaseModel):
-    invoice_name: str
-    invoice_hash: str
+    vendor_name: str
     invoice_number: str
-    total_amount: float
-    date: str
+    invoice_date: str
+    total_amount: Optional[str] = ""
+    line_items: List[LineItem] = []
 
 class Vendor(BaseModel):
     vendor_name: str

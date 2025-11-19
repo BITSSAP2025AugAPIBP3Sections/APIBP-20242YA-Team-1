@@ -46,6 +46,19 @@ class VectorDatabase:
                     metadata = chunk.metadata.copy()
                     metadata["chunk_id"] = chunk.chunk_id
                     metadata["vendor_name"] = chunk.vendor_name
+                    
+                    # Convert complex objects to strings for ChromaDB compatibility
+                    for key, value in metadata.items():
+                        if isinstance(value, (list, dict)):
+                            # Convert lists and dicts to JSON strings
+                            import json
+                            metadata[key] = json.dumps(value)
+                        elif value is None:
+                            metadata[key] = ""
+                        elif not isinstance(value, (str, int, float, bool)):
+                            # Convert other types to strings
+                            metadata[key] = str(value)
+                    
                     metadatas.append(metadata)
                     self.vendor_names.add(chunk.vendor_name)
             

@@ -1,18 +1,392 @@
-{
-    "vendor_name": "Amazon Web Services",
-    "last_updated": "2025-10-30",
-    "invoice_1": {
-        "invoice_name": "AWS Monthly Bill October",
-        "invoice_hash": "abc123hash",
-        "invoice_number": "INV-AWS-001",
-        "total_amount": 2500.00,
-        "date": "2025-10-01"
+[
+    {
+        "vendor_name": "Zencorporations",
+        "invoice_number": "1213",
+        "invoice_date": "16.12.2021",
+        "total_amount": "2809.30",
+        "line_items": [
+            {
+                "item_description": "Glossostigma",
+                "quantity": "3",
+                "unit_price": "9.90",
+                "amount": "29.70"
+            },
+            {
+                "item_description": "Bayberry",
+                "quantity": "222",
+                "unit_price": "5.44",
+                "amount": "1,207.68"
+            },
+            {
+                "item_description": "Waxflower",
+                "quantity": "34",
+                "unit_price": "1.67",
+                "amount": "56.78"
+            },
+            {
+                "item_description": "Carolina Geranium",
+                "quantity": "45",
+                "unit_price": "4.17",
+                "amount": "187.65"
+            },
+            {
+                "item_description": "Smooth Solomon's Seal",
+                "quantity": "3",
+                "unit_price": "4.97",
+                "amount": "14.91"
+            },
+            {
+                "item_description": "El Yunque Colorado",
+                "quantity": "23",
+                "unit_price": "9.97",
+                "amount": "229.31"
+            },
+            {
+                "item_description": "Queen Anne's Lace",
+                "quantity": "32",
+                "unit_price": "6.05",
+                "amount": "193.60"
+            },
+            {
+                "item_description": "Alaskan Douglasia",
+                "quantity": "122",
+                "unit_price": "4.36",
+                "amount": "531.92"
+            },
+            {
+                "item_description": "Deer Sedge",
+                "quantity": "23",
+                "unit_price": "3.82",
+                "amount": "87.86"
+            },
+            {
+                "item_description": "Indian Tobacco",
+                "quantity": "2",
+                "unit_price": "7.25",
+                "amount": "14.50"
+            }
+        ]
     },
-    "invoice_2": {
-        "invoice_name": "AWS Storage Charges",
-        "invoice_hash": "def456hash",
-        "invoice_number": "INV-AWS-002", 
-        "total_amount": 150.75,
-        "date": "2025-10-15"
+    {
+        "vendor_name": "Zencorporations",
+        "invoice_number": "BPXINV-00550",
+        "invoice_date": "23.05.2021",
+        "total_amount": "6610.95",
+        "line_items": [
+            {
+                "item_description": "Dextromethorphan polistirex\nBPXPN-00057",
+                "quantity": "10",
+                "unit_price": "12.45",
+                "amount": "124.50"
+            },
+            {
+                "item_description": "Venlafaxine Hydrochloride\nBPXPN-00012",
+                "quantity": "25",
+                "unit_price": "16.00",
+                "amount": "400.00"
+            },
+            {
+                "item_description": "Metoclopramide Hydrochloride (BPXPO-00537)\nBPXPN-00002",
+                "quantity": "25",
+                "unit_price": "9.99",
+                "amount": "249.75"
+            },
+            {
+                "item_description": "Avobenzone, octinoxate (BPXPO-00538)\nBPXPN-00027",
+                "quantity": "10",
+                "unit_price": "4.45",
+                "amount": "44.50"
+            },
+            {
+                "item_description": "Verapamil hydrochloride\nBPXPN-00066",
+                "quantity": "10",
+                "unit_price": "7.89",
+                "amount": "78.90"
+            },
+            {
+                "item_description": "Tiagabine hydrochloride\nBPXPN-00017",
+                "quantity": "15",
+                "unit_price": "10.25",
+                "amount": "153.75"
+            },
+            {
+                "item_description": "Ziprasidone hydrochloride (BPXPO-00537)\nBPXPN-00044",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Risperidone\nBPXPN-00023",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Metoprolol succinate\nBPXPN-00067",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Acetaminophen\nBPXPN-00045",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Sorafenib\nBPXPN-00018",
+                "quantity": "15",
+                "unit_price": "16.00",
+                "amount": "240.00"
+            },
+            {
+                "item_description": "Telmisartan\nBPXPN-00022",
+                "quantity": "15",
+                "unit_price": "9.99",
+                "amount": "149.85"
+            },
+            {
+                "item_description": "Famotidine\nBPXPN-00068",
+                "quantity": "15",
+                "unit_price": "4.45",
+                "amount": "66.75"
+            },
+            {
+                "item_description": "Methylphenidate Hydrochloride\nBPXPN-00005",
+                "quantity": "15",
+                "unit_price": "7.89",
+                "amount": "118.35"
+            },
+            {
+                "item_description": "Ibuprofen (BPXPO-00538)\nBPXPN-00052",
+                "quantity": "100",
+                "unit_price": "0.99",
+                "amount": "99.00"
+            },
+            {
+                "item_description": "Metformin Hydrochloride (BPXPO-00538)\nBPXPN-00046",
+                "quantity": "15",
+                "unit_price": "2.15",
+                "amount": "32.25"
+            },
+            {
+                "item_description": "Avobenzone, Octisalate and Octocrylene\nBPXPN-00069",
+                "quantity": "15",
+                "unit_price": "16.99",
+                "amount": "254.85"
+            },
+            {
+                "item_description": "Carisoprodol\nBPXPN-00070",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Losartan Potassium\nBPXPN-00047",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Pentazocine Hydrochloride and Naloxone Hydrochloride\nBPXPN-00051",
+                "quantity": "10",
+                "unit_price": "34.99",
+                "amount": "349.90"
+            },
+            {
+                "item_description": "Omeprazole\nBPXPN-00071",
+                "quantity": "25",
+                "unit_price": "9.99",
+                "amount": "249.75"
+            },
+            {
+                "item_description": "Losartan Potassium\nBPXPN-00019",
+                "quantity": "25",
+                "unit_price": "4.45",
+                "amount": "111.25"
+            },
+            {
+                "item_description": "Saline\nBPXPN-00048",
+                "quantity": "10",
+                "unit_price": "7.89",
+                "amount": "78.90"
+            },
+            {
+                "item_description": "Titanium dioxide\nBPXPN-00021",
+                "quantity": "25",
+                "unit_price": "10.25",
+                "amount": "256.25"
+            },
+            {
+                "item_description": "Bicalutamide (BPXPO-00538)\nBPXPN-00049",
+                "quantity": "25",
+                "unit_price": "2.15",
+                "amount": "53.75"
+            },
+            {
+                "item_description": "Ampicillin sodium\nBPXPN-00050",
+                "quantity": "15",
+                "unit_price": "16.99",
+                "amount": "254.85"
+            },
+            {
+                "item_description": "Octinoxate, Titanium Dioxide, Octisalate\nBPXPN-00004",
+                "quantity": "15",
+                "unit_price": "12.45",
+                "amount": "186.75"
+            },
+            {
+                "item_description": "Cavia porcellus hair and cavia porcellus skin\nBPXPN-00020",
+                "quantity": "25",
+                "unit_price": "12.45",
+                "amount": "311.25"
+            }
+        ]
+    },
+    {
+       "vendor_name": "Zencorporations",
+        "invoice_number": "0012820",
+        "invoice_date": "27.08.2019",
+        "total_amount": null,
+        "line_items": [
+            {
+                "item_description": "10-700 - Exterior Protection (10)",
+                "quantity": null,
+                "unit_price": "402.9",
+                "amount": null
+            },
+            {
+                "item_description": "1-515 - Temporary Lighting (29)",
+                "quantity": null,
+                "unit_price": "40.29",
+                "amount": null
+            },
+            {
+                "item_description": "11-060 - Theater and Stage Equipment (17)",
+                "quantity": null,
+                "unit_price": "93.55",
+                "amount": "2712.95"
+            },
+            {
+                "item_description": "1-600 - Product Requirements (Scope of Work) (20)",
+                "quantity": null,
+                "unit_price": "78.83",
+                "amount": "1340.11"
+            },
+            {
+                "item_description": "12-050 - Fabrics (23)",
+                "quantity": null,
+                "unit_price": "274.4",
+                "amount": null
+            },
+            {
+                "item_description": "2-823 - PVC Fences and Gates (27)",
+                "quantity": null,
+                "unit_price": "13.72",
+                "amount": null
+            },
+            {
+                "item_description": "6-400 - Architectural Woodwork (26)",
+                "quantity": null,
+                "unit_price": "94.48",
+                "amount": "2173.04"
+            },
+            {
+                "item_description": "2-820 - Fences and Gates (15)",
+                "quantity": null,
+                "unit_price": "641.52",
+                "amount": null
+            },
+            {
+                "item_description": "9-700 - Wall Finishes (1)",
+                "quantity": null,
+                "unit_price": "23.76",
+                "amount": null
+            },
+            {
+                "item_description": "2-795 - Porous Paving (30)",
+                "quantity": null,
+                "unit_price": "230.36",
+                "amount": null
+            },
+            {
+                "item_description": "11 - Equipment (9)",
+                "quantity": null,
+                "unit_price": "8.86",
+                "amount": null
+            },
+            {
+                "item_description": "5-050 - Basic Metal Materials and Methods (16)",
+                "quantity": null,
+                "unit_price": "99.91",
+                "amount": "1498.65"
+            },
+            {
+                "item_description": "15-600 - Refrigeration Equipment (29)",
+                "quantity": null,
+                "unit_price": "27.31",
+                "amount": null
+            },
+            {
+                "item_description": "10-800 - Toilet, Bath, and Laundry Specialties (23)",
+                "quantity": null,
+                "unit_price": "27.31",
+                "amount": null
+            },
+            {
+                "item_description": "13-200 - Storage Tanks (25)",
+                "quantity": null,
+                "unit_price": "36.44",
+                "amount": null
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "1093.2",
+                "amount": null
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "453.06",
+                "amount": null
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "50.34",
+                "amount": null
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "94.24",
+                "amount": "1507.84"
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "96.99",
+                "amount": "2812.71"
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "63.25",
+                "amount": null
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "99.25",
+                "amount": "2481.25"
+            },
+            {
+                "item_description": null,
+                "quantity": null,
+                "unit_price": "2.75",
+                "amount": null
+            }
+        ]
     }
-}
+]
