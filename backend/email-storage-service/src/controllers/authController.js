@@ -38,7 +38,11 @@ export const googleOAuthCallback = async (req, res) => {
 
     const email = userinfo?.email;
     if (!email) {
-      return res.status(400).json({ message: "Unable to retrieve user email from Google" });
+      return res.status(400).json({ 
+        message: "Unable to retrieve email from Google account.",
+        details: "Google OAuth succeeded but no email address was returned. This may indicate missing OAuth scopes.",
+        action: "Try authenticating again at /auth/google with proper email scope permissions."
+      });
     }
 
     // Fetch existing user to preserve refresh token if Google didn't return one
@@ -58,6 +62,25 @@ export const googleOAuthCallback = async (req, res) => {
       email,
     });
   } catch (error) {
-    res.status(500).json({ message: "OAuth Failed", error: error.message });
+    let userMessage = "Google OAuth authentication failed.";
+    let suggestions = [];
+
+    if (error.message?.includes("invalid_grant")) {
+      userMessage = "Invalid or expired authorization code.";
+      suggestions = ["The authorization code has already been used or expired", "Start the OAuth flow again at /auth/google"];
+    } else if (error.message?.includes("redirect_uri_mismatch")) {
+      userMessage = "OAuth redirect URI mismatch.";
+      suggestions = ["Contact administrator to verify Google OAuth configuration", "Check that redirect URI matches Google Console settings"];
+    } else if (!req.query.code) {
+      userMessage = "Missing authorization code.";
+      suggestions = ["This endpoint should be called by Google after user consent", "Do not call this endpoint directly"];
+    }
+
+    res.status(500).json({ 
+      message: userMessage,
+      details: error.message,
+      suggestions: suggestions.length > 0 ? suggestions : ["Try authenticating again at /auth/google", "Check server logs for more details"],
+      timestamp: new Date().toISOString()
+    });
   }
 };
