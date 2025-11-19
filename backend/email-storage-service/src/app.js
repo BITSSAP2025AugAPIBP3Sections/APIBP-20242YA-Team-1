@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import config from "./config/index.js";
+import {config} from "./config/index.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
@@ -64,6 +64,63 @@ app.get("/health", (req, res) => {
  */
 app.get("/", (req, res) => {
     res.send("Welcome to the Email Storage Service API");
+});
+
+/**
+ * @route   GET /api-info
+ * @desc    Comprehensive API information and endpoint listing
+ * @access  Public
+ * @returns {200} API metadata and available endpoints
+ */
+app.get("/api-info", (req, res) => {
+    res.json({
+        service: "Email Storage Service",
+        version: "1.0.0",
+        description: "Service for fetching, storing, and managing emails from Gmail with automated vendor detection and Drive organization",
+        documentation: `http://localhost:${config.port}/api-docs`,
+        endpoints: {
+            authentication: {
+                "GET /auth/google": "Initialize Google OAuth flow",
+                "GET /auth/google/callback": "OAuth callback handler"
+            },
+            emails: {
+                "POST /api/v1/emails/fetch": "Fetch and process emails with filtering options",
+                "GET /api/v1/emails/schedule/:userId": "Get scheduled email fetch jobs for user",
+                "DELETE /api/v1/emails/schedule/:userId/:jobId": "Cancel a scheduled job"
+            },
+            drive: {
+                "GET /api/v1/drive/users/:userId/vendors": "List all vendor folders in Drive",
+                "GET /api/v1/drive/users/:userId/vendors/:vendorId/invoices": "List invoices for specific vendor"
+            },
+            users: {
+                "GET /api/v1/users/:userId/sync-status": "Get user's last sync timestamp",
+                "POST /api/v1/users/:userId/sync-status/reset": "Reset sync status to re-fetch all emails"
+            },
+            utility: {
+                "GET /health": "Service health check",
+                "GET /": "Welcome message",
+                "GET /api-info": "This endpoint - API information",
+                "GET /api-docs": "Interactive Swagger documentation"
+            }
+        },
+        features: [
+            "Email-only vendor filtering",
+            "Multi-vendor support (comma-separated emails)",
+            "Automated vendor detection from email addresses",
+            "Google Drive organization (invoiceAutomation folder structure)",
+            "Manual and scheduled email fetching (hourly/daily/weekly)",
+            "Sync status tracking to avoid duplicate fetches",
+            "User-friendly error messages with actionable guidance"
+        ],
+        rateLimit: {
+            auth: "60 requests per 15 minutes",
+            fetch: "30 requests per 15 minutes"
+        },
+        contact: {
+            documentation: `http://localhost:${config.port}/api-docs`,
+            support: "See README.md for detailed usage examples"
+        }
+    });
 });
 
 // Google OAuth routes
