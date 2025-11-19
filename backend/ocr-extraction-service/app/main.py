@@ -22,6 +22,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
 OCR_PORT = int(os.getenv("OCR_PORT"))
+user_id = os.getenv("USER_ID")
 INVOICES_JSON_FOLDER = "invoices_json"
 MASTER_JSON_PATH = os.path.join(INVOICES_JSON_FOLDER, "master.json")
 
@@ -215,7 +216,7 @@ async def process_pdfs(user_id: str):
 # -------------------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(process_pdfs("691df78062430a34bfcc08dd"))
+    asyncio.create_task(process_pdfs(user_id))
     yield
 
 
