@@ -22,7 +22,13 @@ export const getGoogleAuthURL = (req, res) => {
     prompt: "consent",
     scope: SCOPES,
   });
-  // Redirect to Google OAuth instead of returning JSON
+  const acceptsJson = req.headers?.accept?.includes("application/json");
+  const fetchMode = req.headers["sec-fetch-mode"];
+
+  if (acceptsJson || fetchMode === "cors") {
+    return res.json({ url });
+  }
+
   res.redirect(url);
 };
 

@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import logger from "../utils/logger.js";
-import { listVendorFolders, listVendorInvoices } from "../services/driveService.js";
+import { listVendorFolders, listVendorInvoices, getVendorMasterData } from "../services/driveService.js";
 
 export const getVendorsByUser = async (req, res) => {
   try {
@@ -145,6 +145,82 @@ export const getInvoicesByVendor = async (req, res) => {
       details: error.message,
       suggestions: suggestions.length > 0 ? suggestions : ["Check server logs", "Verify Google Drive access"],
       timestamp: new Date().toISOString()
+    });
+  }
+};
+
+export const getVendorMaster = async (req, res) => {
+  try {
+    const { userId, vendorId } = req.params;
+
+    if (!userId || !vendorId) {
+      return res.status(400).json({
+        message: "Missing required parameters.",
+        details: "Both 'userId' and 'vendorId' path parameters are required.",
+        example: "/api/v1/drive/users/690c7d0ee107fb31784c1b1b/vendors/1ABC123xyz/master",
+        providedValues: { userId, vendorId },
+      });
+    }
+
+    if (!/^[a-f0-9]{24}$/i.test(userId)) {
+      return res.status(400).json({
+        message: "Invalid userId format.",
+        details: "userId must be a valid 24-character MongoDB ObjectId.",
+        providedValue: userId,
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+        details: "No user exists with the provided userId.",
+        action: "Verify the userId or authenticate at /auth/google first.",
+        userId: userId,
+      });
+    }
+
+    if (!user.googleRefreshToken) {
+      return res.status(400).json({
+        message: "Google Drive not connected.",
+        details: "This user has not connected their Google account.",
+        action: "Complete OAuth at /auth/google to grant Drive access.",
+        userEmail: user.email,
+      });
+    }
+
+    const masterPayload = await getVendorMasterData(user, vendorId);
+
+    return res.status(200).json({
+      userId,
+      vendorFolderId: masterPayload.vendorFolderId,
+      invoiceFolderId: masterPayload.invoiceFolderId,
+      masterFileId: masterPayload.masterFileId,
+      updatedAt: masterPayload.updatedAt,
+      size: masterPayload.size,
+      missing: masterPayload.missing,
+      reason: masterPayload.reason || null,
+      records: masterPayload.records,
+    });
+  } catch (error) {
+    logger.error(error, { source: "getVendorMaster" });
+
+    let userMessage = "Failed to retrieve master.json for this vendor.";
+    let suggestions = [];
+
+    if (error.message?.includes("invalid_grant") || error.message?.includes("Token expired")) {
+      userMessage = "Google authentication expired.";
+      suggestions = ["Re-authenticate at /auth/google"];
+    } else if (error.message?.includes("Vendor folder not found")) {
+      userMessage = "Vendor folder not found.";
+      suggestions = ["Verify the vendorId is correct", "List vendors using GET /api/v1/drive/users/:userId/vendors"];
+    }
+
+    return res.status(500).json({
+      message: userMessage,
+      details: error.message,
+      suggestions: suggestions.length > 0 ? suggestions : ["Check server logs", "Verify Google Drive access"],
+      timestamp: new Date().toISOString(),
     });
   }
 };
