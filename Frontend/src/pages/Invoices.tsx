@@ -3,6 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   FileText, 
   RefreshCw, 
@@ -18,7 +25,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import api, { type Invoice } from "@/services/api";
+import api, { type Invoice, type MasterRecord, type MasterSummary } from "@/services/api";
+
+const BASE_CURRENCY = "INR";
+const SUPPORTED_CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SGD"] as const;
+type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 const Invoices = () => {
   const { toast } = useToast();
@@ -31,6 +42,14 @@ const Invoices = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [masterSummary, setMasterSummary] = useState<MasterSummary | null>(null);
+  const [isMasterLoading, setIsMasterLoading] = useState(false);
+  const [masterError, setMasterError] = useState<string | null>(null);
+  const [currencyPreference, setCurrencyPreference] = useState<SupportedCurrency>(BASE_CURRENCY);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number> | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
+  const [ratesTimestamp, setRatesTimestamp] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem("tempUserId", userId);
@@ -41,6 +60,71 @@ const Invoices = () => {
       fetchInvoices();
     }
   }, [userId, vendorId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const fetchRates = async () => {
+      setRatesLoading(true);
+      try {
+        const response = await fetch(`https://open.er-api.com/v6/latest/${BASE_CURRENCY}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Exchange rate request failed with status ${response.status}`);
+        }
+
+        const payload = await response.json();
+
+        if (payload.result !== "success" || !payload.rates) {
+          const reason = payload["error-type"] || "Unable to retrieve exchange rates right now.";
+          throw new Error(reason);
+        }
+
+        if (!isMounted) return;
+        const normalizedRates = Object.entries(payload.rates as Record<string, unknown>).reduce<Record<string, number>>(
+          (acc, [code, value]) => {
+            if (typeof value === "number") {
+              acc[code.toUpperCase()] = value;
+            }
+            return acc;
+          },
+          {}
+        );
+        normalizedRates[BASE_CURRENCY] = normalizedRates[BASE_CURRENCY] ?? 1;
+        setExchangeRates(normalizedRates);
+        setRatesError(null);
+        const timestamp =
+          typeof payload.time_last_update_unix === "number"
+            ? new Date(payload.time_last_update_unix * 1000).toLocaleString()
+            : typeof payload.time_last_update_utc === "string"
+              ? payload.time_last_update_utc
+              : null;
+        setRatesTimestamp(timestamp);
+      } catch (error) {
+        if ((error as { name?: string }).name === "AbortError") {
+          return;
+        }
+        if (!isMounted) return;
+        setExchangeRates(null);
+        setRatesError(error instanceof Error ? error.message : "Unexpected error loading exchange rates.");
+        setRatesTimestamp(null);
+      } finally {
+        if (isMounted) {
+          setRatesLoading(false);
+        }
+      }
+    };
+
+    fetchRates();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
 
   const fetchInvoices = async () => {
     if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) {
@@ -62,6 +146,8 @@ const Invoices = () => {
     }
 
     setIsLoading(true);
+    setMasterSummary(null);
+    setMasterError(null);
     try {
       const { data, response } = await api.getInvoices(userId, vendorId);
 
@@ -79,10 +165,15 @@ const Invoices = () => {
             variant: "destructive",
           });
         }
+
+        await fetchMasterSummary(userId, vendorId);
       } else {
         toast({
           title: "⚠️ Unable to Load Invoices",
-          description: data.message || data.details || "Failed to fetch invoices from Google Drive. Verify your vendor ID and Google connection.",
+          description:
+            (data as any).message ||
+            (data as any).details ||
+            "Failed to fetch invoices from Google Drive. Verify your vendor ID and Google connection.",
           variant: "destructive",
         });
       }
@@ -94,6 +185,37 @@ const Invoices = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMasterSummary = async (selectedUserId: string, selectedVendorId: string) => {
+    setIsMasterLoading(true);
+    try {
+      const { data, response } = await api.getVendorMaster(selectedUserId, selectedVendorId);
+      if (!response.ok) {
+        setMasterError(
+          (data as any).message || data.reason || "Master data not available for this vendor yet."
+        );
+        setMasterSummary(null);
+        return;
+      }
+
+      setMasterSummary(data);
+      if (data.records?.length) {
+        toast({
+          title: "📊 Analytics Ready",
+          description: `Loaded ${data.records.length} processed invoice ${
+            data.records.length === 1 ? "entry" : "entries"
+          } from master.json`,
+        });
+      } else {
+        setMasterError("Master file found but contains no processed invoices yet.");
+      }
+    } catch (error) {
+      setMasterError("Unable to load master analytics. Please ensure the OCR service uploaded master.json for this vendor.");
+      setMasterSummary(null);
+    } finally {
+      setIsMasterLoading(false);
     }
   };
 
@@ -139,6 +261,342 @@ const Invoices = () => {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
+
+  const masterRecords = masterSummary?.records ?? [];
+
+  const getRecordField = (record: Record<string, unknown>, keys: string[]) => {
+    for (const key of keys) {
+      const value = record[key];
+      if (value !== undefined && value !== null && value !== "") {
+        return value;
+      }
+    }
+    return undefined;
+  };
+
+  const parseAmount = (value: unknown) => {
+    if (typeof value === "number" && !Number.isNaN(value)) return value;
+    if (typeof value === "string") {
+      const cleaned = value.replace(/[^0-9.-]/g, "");
+      const amount = Number(cleaned);
+      return Number.isNaN(amount) ? 0 : amount;
+    }
+    return 0;
+  };
+
+  const inferCurrency = (record: Record<string, unknown>) => {
+    const currencyValue = getRecordField(record, ["currency", "currency_code", "currencyCode"]);
+    if (typeof currencyValue === "string" && currencyValue.length === 3) {
+      return currencyValue.toUpperCase();
+    }
+    return BASE_CURRENCY;
+  };
+
+  const formatAmount = (amount: number, currencyCode: string) => {
+    const normalizedCurrency = typeof currencyCode === "string" && currencyCode.length === 3
+      ? currencyCode.toUpperCase()
+      : BASE_CURRENCY;
+    try {
+      const locale = normalizedCurrency === "INR" ? "en-IN" : "en-US";
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: normalizedCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch (error) {
+      return amount.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+  };
+
+  const convertToBase = (amount: number, sourceCurrency: string) => {
+    if (!Number.isFinite(amount)) return { value: 0, available: false } as const;
+    if (sourceCurrency === BASE_CURRENCY) {
+      return { value: amount, available: true } as const;
+    }
+
+    const rate = exchangeRates?.[sourceCurrency];
+    if (!rate || rate === 0) {
+      return { value: amount, available: false } as const;
+    }
+
+    return { value: amount / rate, available: true } as const;
+  };
+
+  const convertFromBase = (amount: number, targetCurrency: SupportedCurrency) => {
+    if (!Number.isFinite(amount)) return { value: 0, available: false } as const;
+    if (targetCurrency === BASE_CURRENCY) {
+      return { value: amount, available: true } as const;
+    }
+
+    const rate = exchangeRates?.[targetCurrency];
+    if (!rate || rate === 0) {
+      return { value: amount, available: false } as const;
+    }
+
+    return { value: amount * rate, available: true } as const;
+  };
+
+  type AnalyticsRow = {
+    invoiceNumber: string;
+    invoiceDateDisplay: string;
+    dueDateDisplay: string;
+    dueDateRaw: Date | null;
+    rawAmount: number;
+    sourceCurrency: string;
+    baseAmount: number;
+    baseAvailable: boolean;
+    displayAmount: number;
+    displayCurrency: string;
+    displayAvailable: boolean;
+    status: string;
+    processedDisplay: string;
+    record: MasterRecord;
+  };
+
+  const analyticsRows: AnalyticsRow[] = masterRecords.map((record) => {
+    const invoiceNumber = getRecordField(record, [
+      "invoice_number",
+      "invoiceNumber",
+      "invoice_no",
+      "invoiceNo",
+      "invoice_id",
+    ]);
+    const invoiceDateValue = getRecordField(record, ["invoice_date", "invoiceDate", "date"]);
+    const dueDateValue = getRecordField(record, ["due_date", "dueDate"]);
+    const totalAmount = parseAmount(
+      getRecordField(record, ["total_amount", "totalAmount", "amount_due", "amountDue", "grand_total", "grandTotal"])
+    );
+    const status = getRecordField(record, ["status", "payment_status", "paymentStatus"]);
+    const processedAtValue = getRecordField(record, ["processed_at", "processedAt"]);
+    const sourceCurrency = inferCurrency(record);
+
+    const dueDateRaw = dueDateValue ? new Date(String(dueDateValue)) : null;
+    const baseConversion = convertToBase(totalAmount, sourceCurrency);
+    const targetConversion = convertFromBase(baseConversion.value, currencyPreference);
+
+    const displayAvailable = baseConversion.available && targetConversion.available;
+    const displayCurrency = displayAvailable ? currencyPreference : sourceCurrency;
+    const displayAmount = displayAvailable ? targetConversion.value : totalAmount;
+
+    return {
+      invoiceNumber: invoiceNumber ? String(invoiceNumber) : "N/A",
+      invoiceDateDisplay: invoiceDateValue ? formatDate(String(invoiceDateValue)) : "N/A",
+      dueDateDisplay: dueDateValue ? formatDate(String(dueDateValue)) : "N/A",
+      dueDateRaw,
+      rawAmount: totalAmount,
+      sourceCurrency,
+      baseAmount: baseConversion.value,
+      baseAvailable: baseConversion.available,
+      displayAmount,
+      displayCurrency,
+      displayAvailable,
+      status: status ? String(status) : "Unknown",
+      processedDisplay: processedAtValue ? formatDate(String(processedAtValue)) : "N/A",
+      record,
+    };
+  });
+
+  const conversionEligibleRows = analyticsRows.filter((item) => item.displayAvailable);
+
+  const totalAmountSum = conversionEligibleRows.reduce((sum, item) => sum + item.displayAmount, 0);
+  const averageInvoiceValue = conversionEligibleRows.length
+    ? totalAmountSum / conversionEligibleRows.length
+    : 0;
+  const overdueCount = analyticsRows.filter((item) => {
+    if (!item.dueDateRaw || Number.isNaN(item.dueDateRaw.getTime())) return false;
+    return item.dueDateRaw < new Date();
+  }).length;
+
+  const statusBreakdown = analyticsRows.reduce<Record<string, number>>((acc, item) => {
+    const key = item.status || "Unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const conversionUnavailableCount = analyticsRows.length - conversionEligibleRows.length;
+  const aggregateCurrency = currencyPreference;
+
+  const currencyOptions: { value: SupportedCurrency; label: string }[] = SUPPORTED_CURRENCIES.map((code) => ({
+    value: code,
+    label: code === BASE_CURRENCY ? `${code} (Base)` : code,
+  }));
+
+  const analyticsCard =
+    (isMasterLoading || masterSummary || masterError) && (
+      <Card>
+        <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Vendor Analytics</CardTitle>
+            <CardDescription>
+              Insights derived from OCR processed master.json for this vendor. Base currency {BASE_CURRENCY}.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="currency-select" className="text-xs uppercase text-muted-foreground">
+              Currency
+            </Label>
+            <div className="flex items-center gap-2">
+              <Select
+                value={currencyPreference}
+                onValueChange={(value) => setCurrencyPreference(value as SupportedCurrency)}
+                disabled={ratesLoading}
+              >
+                <SelectTrigger id="currency-select" className="w-[160px]">
+                  <SelectValue placeholder="Currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencyOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {ratesLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isMasterLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : masterError ? (
+            <div className="flex items-center gap-3 rounded-md border border-dashed border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{masterError}</span>
+            </div>
+          ) : masterSummary && (
+            <>
+              {ratesError && (
+                <div className="flex items-center gap-2 rounded-md border border-dashed border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>{ratesError}</span>
+                </div>
+              )}
+              {ratesTimestamp && !ratesError && (
+                <p className="text-xs text-muted-foreground">
+                  Rates updated: {ratesTimestamp} (base {BASE_CURRENCY})
+                </p>
+              )}
+              {conversionUnavailableCount > 0 && !ratesError && !ratesLoading && (
+                <p className="text-xs text-muted-foreground">
+                  Missing exchange rates for {conversionUnavailableCount} invoice
+                  {conversionUnavailableCount === 1 ? "" : "s"}. Those amounts remain in their
+                  original currency.
+                </p>
+              )}
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground">Processed Invoices</p>
+                  <p className="mt-1 text-2xl font-semibold">{analyticsRows.length}</p>
+                </div>
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground flex items-center justify-between gap-2">
+                    <span>Total Amount</span>
+                    <span className="font-mono text-[10px] text-muted-foreground/80">{aggregateCurrency}</span>
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold">
+                    {conversionEligibleRows.length
+                      ? formatAmount(totalAmountSum, aggregateCurrency)
+                      : "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground flex items-center justify-between gap-2">
+                    <span>Average Invoice</span>
+                    <span className="font-mono text-[10px] text-muted-foreground/80">{aggregateCurrency}</span>
+                  </p>
+                  <p className="mt-1 text-2xl font-semibold">
+                    {conversionEligibleRows.length
+                      ? formatAmount(averageInvoiceValue, aggregateCurrency)
+                      : "N/A"}
+                  </p>
+                </div>
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground">Invoices Past Due</p>
+                  <p className="mt-1 text-2xl font-semibold">{overdueCount}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground">Master Updated</p>
+                  <p className="mt-1 text-sm font-medium">
+                    {masterSummary.updatedAt ? formatDate(masterSummary.updatedAt) : "Not available"}
+                  </p>
+                </div>
+                <div className="rounded-md border px-4 py-3">
+                  <p className="text-xs uppercase text-muted-foreground">Status Breakdown</p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {Object.keys(statusBreakdown).length === 0 ? (
+                      <span className="text-sm text-muted-foreground">No status data</span>
+                    ) : (
+                      Object.entries(statusBreakdown).map(([status, count]) => (
+                        <Badge key={status} variant="outline" className="text-xs">
+                          {status}: {count}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                      <th className="py-2 pr-4">Invoice #</th>
+                      <th className="py-2 pr-4">Invoice Date</th>
+                      <th className="py-2 pr-4">Due Date</th>
+                      <th className="py-2 pr-4">Total</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4">Processed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analyticsRows.map((row, index) => (
+                      <tr key={`master-row-${index}`} className="border-b last:border-b-0">
+                        <td className="py-2 pr-4 font-mono text-xs">{row.invoiceNumber}</td>
+                        <td className="py-2 pr-4">{row.invoiceDateDisplay}</td>
+                        <td className="py-2 pr-4">{row.dueDateDisplay}</td>
+                        <td className="py-2 pr-4 whitespace-nowrap">
+                          {row.displayAvailable ? (
+                            formatAmount(row.displayAmount, row.displayCurrency)
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {formatAmount(row.rawAmount, row.sourceCurrency)}
+                              <span className="ml-1">(rate unavailable)</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <Badge variant="secondary" className="text-xs">
+                            {row.status}
+                          </Badge>
+                        </td>
+                        <td className="py-2 pr-4">{row.processedDisplay}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {analyticsRows.length === 0 && (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Master file available but no structured invoice data detected yet.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
 
   return (
     <div className="p-6 space-y-6">
@@ -209,6 +667,8 @@ const Invoices = () => {
           </Badge>
         </div>
       )}
+
+      {analyticsCard}
 
       {/* Search Bar */}
       {invoices.length > 0 && (
@@ -357,6 +817,8 @@ const Invoices = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Analytics Section relocated above */}
     </div>
   );
 };

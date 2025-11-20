@@ -4,4 +4,5 @@ venv/
 users.db
 __pycache__/
 *.pyc
+client_secret.example.json
 client_secret.json

@@ -1,6 +1,7 @@
 fastapi==0.115.2
 uvicorn==0.30.1
 requests==2.31.0
+httpx==0.27.0
 pdfminer.six==20221105
 python-dotenv==1.0.1
 google-api-python-client

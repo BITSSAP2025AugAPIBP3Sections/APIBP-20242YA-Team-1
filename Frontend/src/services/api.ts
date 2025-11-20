@@ -31,6 +31,27 @@ export interface Invoice {
   size?: string;
 }
 
+export interface MasterRecord extends Record<string, unknown> {
+  drive_file_id?: string;
+  file_name?: string;
+  vendor_name?: string;
+  processed_at?: string;
+  web_view_link?: string | null;
+  web_content_link?: string | null;
+}
+
+export interface MasterSummary {
+  userId: string;
+  vendorFolderId: string;
+  invoiceFolderId: string | null;
+  masterFileId: string | null;
+  updatedAt: string | null;
+  size: number | null;
+  missing: boolean;
+  reason?: string | null;
+  records: MasterRecord[];
+}
+
 export interface ScheduledJob {
   jobId: string;
   userId: string;
@@ -226,8 +247,6 @@ export async function getInvoices(
   return apiCall(`/api/v1/drive/users/${userId}/vendors/${vendorId}/invoices`);
 }
 
-<<<<<<< Updated upstream
-=======
 export async function getVendorMaster(
   userId: string,
   vendorId: string
@@ -273,7 +292,7 @@ export async function getChatVendorSummary(vendorName: string): Promise<{ data: 
   return { data, response };
 }
 
->>>>>>> Stashed changes
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -299,6 +318,7 @@ export const api = {
   
   // Invoice
   getInvoices,
+  getVendorMaster,
 };
 
 export default api;

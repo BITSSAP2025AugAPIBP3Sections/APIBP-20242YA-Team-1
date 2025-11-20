@@ -25,21 +25,37 @@ function buildDriveClient(user) {
 export const saveToDrive = async (user, vendor, fileBuffer, fileName) => {
   const drive = buildDriveClient(user);
 
-  // Parent folder: invoiceAutomation
   const rootFolderId = await findOrCreateFolder(drive, ROOT_FOLDER_NAME);
 
-  // Vendor folder: invoiceAutomation/{Vendor}
-  const safeVendor = (vendor || "Others").replace(/[^\w\-\s]/g, "_");
-  const vendorFolderId = await findOrCreateFolder(drive, safeVendor, rootFolderId);
+  const vendorDisplayName = vendor || "Others";
+  const vendorFolderName = vendorDisplayName.replace(/[^\w\-\s]/g, "_");
+  const vendorFolderId = await findOrCreateFolder(drive, vendorFolderName, rootFolderId);
 
-  // Invoices subfolder
   const invoiceFolderId = await findOrCreateFolder(drive, "invoices", vendorFolderId);
 
-  // Determine mime type from filename
+  const existingFile = await findFileInFolder(drive, invoiceFolderId, fileName);
+  if (existingFile) {
+    if (!existingFile.webViewLink || !existingFile.webContentLink) {
+      const links = await getFileLinks(drive, existingFile.id);
+      existingFile.webViewLink = links.webViewLink;
+      existingFile.webContentLink = links.webContentLink;
+    }
+    logger.info(`Skipped duplicate → ${vendorFolderName}/invoices/${fileName}`);
+    return {
+      fileId: existingFile.id,
+      skipped: true,
+      vendorFolderId,
+      vendorFolderName,
+      vendorDisplayName,
+      invoiceFolderId,
+      webViewLink: existingFile.webViewLink || null,
+      webContentLink: existingFile.webContentLink || null,
+    };
+  }
+
   const mimeType = getMimeType(fileName);
 
-  // Upload file as a Readable stream (avoids .pipe error)
-  await drive.files.create({
+  const created = await drive.files.create({
     requestBody: {
       name: fileName,
       parents: [invoiceFolderId],
@@ -48,9 +64,22 @@ export const saveToDrive = async (user, vendor, fileBuffer, fileName) => {
       mimeType,
       body: Readable.from(fileBuffer),
     },
+    fields: "id,name",
   });
+  const fileDetails = await getFileLinks(drive, created.data.id);
 
-  logger.info(`Uploaded → ${safeVendor}/invoices/${fileName}`);
+  logger.info(`Uploaded → ${vendorFolderName}/invoices/${fileName}`);
+
+  return {
+    fileId: created.data.id,
+    skipped: false,
+    vendorFolderId,
+    vendorFolderName,
+    vendorDisplayName,
+    invoiceFolderId,
+    webViewLink: fileDetails.webViewLink,
+    webContentLink: fileDetails.webContentLink,
+  };
 };
 
 export const listVendorFolders = async (user) => {
@@ -107,6 +136,100 @@ export const listVendorInvoices = async (user, vendorFolderId) => {
   return { vendorFolderId, invoiceFolderId: invoiceFolder.id, invoices };
 };
 
+export const getVendorMasterData = async (user, vendorFolderId) => {
+  if (!vendorFolderId) {
+    throw new Error("Vendor folder ID is required");
+  }
+
+  const drive = buildDriveClient(user);
+  const invoiceFolder = await findFolder(drive, "invoices", vendorFolderId);
+
+  if (!invoiceFolder) {
+    return {
+      vendorFolderId,
+      invoiceFolderId: null,
+      masterFileId: null,
+      updatedAt: null,
+      size: null,
+      records: [],
+      missing: true,
+      reason: "invoices_folder_missing",
+    };
+  }
+
+  const fileQuery = await drive.files.list({
+    q: `'${invoiceFolder.id}' in parents and name='master.json' and trashed=false`,
+    fields: "files(id,name,modifiedTime,createdTime,size)",
+    orderBy: "modifiedTime desc",
+    pageSize: 1,
+  });
+
+  const masterFile = fileQuery.data.files?.[0];
+  if (!masterFile) {
+    return {
+      vendorFolderId,
+      invoiceFolderId: invoiceFolder.id,
+      masterFileId: null,
+      updatedAt: null,
+      size: null,
+      records: [],
+      missing: true,
+      reason: "master_not_found",
+    };
+  }
+
+  let fileData = null;
+  try {
+    const { data } = await drive.files.get({
+      fileId: masterFile.id,
+      alt: "media",
+    });
+    if (typeof data === "string") {
+      fileData = JSON.parse(data);
+    } else if (Buffer.isBuffer(data)) {
+      fileData = JSON.parse(data.toString("utf-8"));
+    } else {
+      fileData = data;
+    }
+  } catch (error) {
+    logger.error("Failed to download master.json", {
+      fileId: masterFile.id,
+      error: error.message,
+    });
+    return {
+      vendorFolderId,
+      invoiceFolderId: invoiceFolder.id,
+      masterFileId: masterFile.id,
+      updatedAt: masterFile.modifiedTime || masterFile.createdTime,
+      size: masterFile.size ? Number(masterFile.size) : null,
+      records: [],
+      missing: true,
+      reason: "download_failed",
+    };
+  }
+
+  let records = [];
+  if (Array.isArray(fileData)) {
+    records = fileData;
+  } else if (fileData && typeof fileData === "object") {
+    if (Array.isArray(fileData.records)) {
+      records = fileData.records;
+    } else {
+      records = [fileData];
+    }
+  }
+
+  return {
+    vendorFolderId,
+    invoiceFolderId: invoiceFolder.id,
+    masterFileId: masterFile.id,
+    updatedAt: masterFile.modifiedTime || masterFile.createdTime || null,
+    size: masterFile.size ? Number(masterFile.size) : null,
+    records,
+    missing: false,
+  };
+};
+
 function getMimeType(fileName = "") {
   const ext = (fileName.split(".").pop() || "").toLowerCase();
   switch (ext) {
@@ -153,4 +276,35 @@ async function findFolder(drive, folderName, parentId = null) {
 
   const res = await drive.files.list({ q: query, fields: "files(id,name,createdTime,modifiedTime)" });
   return res.data.files?.[0] || null;
+}
+
+async function findFileInFolder(drive, folderId, fileName) {
+  const query = `'${folderId}' in parents and name='${fileName}' and trashed=false`;
+  const res = await drive.files.list({
+    q: query,
+    fields: "files(id,name,webViewLink,webContentLink)",
+  });
+  return res.data.files?.[0] || null;
+}
+
+async function getFileLinks(drive, fileId) {
+  try {
+    const { data } = await drive.files.get({
+      fileId,
+      fields: "id,webViewLink,webContentLink",
+    });
+    return {
+      webViewLink: data.webViewLink || null,
+      webContentLink: data.webContentLink || null,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch Drive links", {
+      fileId,
+      error: error.message,
+    });
+    return {
+      webViewLink: null,
+      webContentLink: null,
+    };
+  }
 }

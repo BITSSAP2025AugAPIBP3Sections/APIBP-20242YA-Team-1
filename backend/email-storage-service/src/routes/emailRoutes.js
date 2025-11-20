@@ -1,12 +1,10 @@
 import express from "express";
 import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
-<<<<<<< Updated upstream
 import { getInvoicesByVendor, getVendorsByUser } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus } from "../controllers/userController.js";
-=======
+
 import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus, disconnectGoogleAccount } from "../controllers/userController.js";
->>>>>>> Stashed changes
 
 const router = express.Router();
 
@@ -119,6 +117,7 @@ router.get("/drive/users/:userId/vendors", getVendorsByUser);
  *   }
  */
 router.get("/drive/users/:userId/vendors/:vendorId/invoices", getInvoicesByVendor);
+router.get("/drive/users/:userId/vendors/:vendorId/master", getVendorMaster);
 
 /**
  * @route   GET /api/v1/users/:userId/sync-status

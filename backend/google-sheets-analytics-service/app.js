@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import cors from "cors";
 dotenv.config();
 
 // Routes & Swagger
@@ -8,6 +9,13 @@ import { swaggerDocs } from "./src/routes/swaggerDocs.js";
 
 const app = express();
 app.use(express.json());
+
+// Enable CORS for frontend
+app.use(cors({
+  origin: "http://localhost:8000",
+  methods: ["GET", "POST"],
+}));
+// app.use(cors());
 
 // Routes
 app.use("/api/v1/sheets", sheetsRoutes);
