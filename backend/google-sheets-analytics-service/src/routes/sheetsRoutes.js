@@ -3,6 +3,7 @@ import { updateSheet, exportData, getAnalytics } from "../controllers/sheetsCont
 import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @swagger
@@ -67,8 +68,6 @@ const router = express.Router();
  *       500:
  *         description: Failed to export data
  */
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 router.post("/update", upload.single("file"), updateSheet);
 router.get("/analytics", getAnalytics);
