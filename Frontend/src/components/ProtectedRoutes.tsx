@@ -13,6 +13,7 @@ import Vendors from "@/pages/Vendors";
 import Invoices from "@/pages/Invoices";
 import NotFound from "@/pages/NotFound";
 import Analytics from "@/pages/Analytics";
+import AIAssistant from "@/pages/AIAssistant";  
 
 const ProtectedRoutes = () => {
   const { sidebarWidth, isResizing, startResizing, stopResizing } = useResizableSidebar({
@@ -102,6 +103,8 @@ const ProtectedLayout = ({
               <Route path="/reset" element={<Navigate to="/" replace />} />
               <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/ai-assistant" element={<AIAssistant />} />
+
             </Routes>
           </div>
         </main>

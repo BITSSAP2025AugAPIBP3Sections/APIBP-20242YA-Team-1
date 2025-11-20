@@ -27,6 +27,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useRef, useState } from "react";
+import { MessageCircle } from "lucide-react"; 
 
 const mainMenuItems = [
   {
@@ -58,6 +59,11 @@ const mainMenuItems = [
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
+  },
+  {
+    title: "AI Assistant",
+    url: "/ai-assistant",
+    icon: MessageCircle,     // <-- ADD THIS LINE
   },
 ];
 
