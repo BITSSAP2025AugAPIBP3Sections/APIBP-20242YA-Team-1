@@ -55,23 +55,10 @@ const mainMenuItems = [
     url: "/vendors",
     icon: Building2,
   },
-<<<<<<< Updated upstream
-  {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart3,
-=======
-
   {
     title: "AI Assistant",
     url: "/ai-assistant",
-    icon: MessageCircle,     // <-- ADD THIS LINE
->>>>>>> Stashed changes
-  },
-  {
-    title: "AI Assistant",
-    url: "/ai-assistant",
-    icon: MessageCircle,     // <-- ADD THIS LINE
+    icon: MessageCircle,
   },
 ];
 

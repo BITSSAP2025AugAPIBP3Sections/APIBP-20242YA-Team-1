@@ -1,8 +1,5 @@
 import express from "express";
 import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
-import { getInvoicesByVendor, getVendorsByUser } from "../controllers/driveController.js";
-import { getUserSyncStatus, resetUserSyncStatus } from "../controllers/userController.js";
-
 import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus, disconnectGoogleAccount } from "../controllers/userController.js";
 

@@ -366,26 +366,19 @@ class VendorKnowledgeOrchestrator:
         except Exception as e:
             return {"success": False, "message": f"Error resetting database: {str(e)}"}
 
-<<<<<<< Updated upstream
-    def incremental_update(self) -> Dict[str, Any]:
-        return self.process_vendor_data(incremental=True)
-=======
     def get_analytics(self, period: str = "year") -> Dict[str, Any]:
         """Compute high-level analytics across all vendors.
-        Period currently influences monthlyTrend range only (month, quarter, year, all).
-        """
+        Period influences monthlyTrend range (month, quarter, year, all)."""
         try:
             spend_ranking = self.vector_db.get_vendor_spend_totals()
             if not spend_ranking:
                 return {"success": False, "message": "No spend data indexed"}
 
-            # Highest spend vendor
             highest = spend_ranking[0]
             total_spend_all = sum(v["total_spend"] for v in spend_ranking)
             total_invoices_all = sum(v["invoice_count"] for v in spend_ranking) or 1
             average_invoice = total_spend_all / total_invoices_all
 
-            # Build monthly trend: iterate all invoice metadata; we need raw metadatas
             raw = self.vector_db.collection.get(include=["metadatas"]).get("metadatas", [])
             from collections import defaultdict
             import datetime
@@ -402,41 +395,32 @@ class VendorKnowledgeOrchestrator:
                 except Exception:
                     amount = 0.0
                 try:
-                    # Accept various date formats
                     dt = datetime.datetime.fromisoformat(date_str[:10]) if date_str else None
                 except Exception:
                     dt = None
                 if dt:
                     key = dt.strftime("%Y-%m")
                     monthly_totals[key] += amount
-            # Sort months
             sorted_months = sorted(monthly_totals.keys())
-            # Range filter based on period
             if period == "month":
-                # last 1 month (current month)
                 last_key = sorted_months[-1] if sorted_months else None
                 filtered = [last_key] if last_key else []
             elif period == "quarter":
                 filtered = sorted_months[-3:]
             elif period == "year":
                 filtered = sorted_months[-12:]
-            else:  # all
+            else:
                 filtered = sorted_months
             monthly_trend = [{"name": m, "value": monthly_totals[m]} for m in filtered]
 
-            # Show all vendors (including zero spend) for transparency
             top_vendors = [
                 {"name": v["vendor_name"], "value": v["total_spend"]}
                 for v in spend_ranking
             ]
-
-            # Spend by category placeholder: reuse vendor names (could be enhanced later)
             spend_by_category = [
                 {"name": v["vendor_name"], "value": v["total_spend"]}
                 for v in spend_ranking[:8]
             ]
-
-            # Quarterly trend (aggregate monthly keys into quarters)
             from math import floor
             quarterly_map = defaultdict(float)
             for m, val in monthly_totals.items():
@@ -448,7 +432,6 @@ class VendorKnowledgeOrchestrator:
                     pass
             quarterly_trend = [{"name": k, "value": v} for k, v in sorted(quarterly_map.items())][-8:]
 
-            # Placeholder costReduction & avgPaymentTime (no payment date data yet)
             cost_reduction = 0.0
             avg_payment_time = 0.0
 
@@ -474,7 +457,6 @@ class VendorKnowledgeOrchestrator:
 
     async def incremental_update(self, user_id: str | None = None) -> Dict[str, Any]:
         return await self.process_vendor_data(incremental=True, user_id=user_id)
->>>>>>> Stashed changes
 
 
 def detect_vendor_name(query: str, known_vendors: List[str], llm_service: Optional[LLMService] = None) -> Optional[str]:
