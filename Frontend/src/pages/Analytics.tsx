@@ -1,7 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
-import { TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, DollarSign, Calendar, LucideIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -10,77 +12,81 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// TODO: Remove mock data
-const mockSpendByCategory = [
-  { name: "Technology", value: 45200 },
-  { name: "Office Supplies", value: 28300 },
-  { name: "Services", value: 24800 },
-  { name: "Marketing", value: 18900 },
-  { name: "Legal", value: 15600 },
-];
+interface Insight {
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  change?: string;
+  changeType?: "positive" | "negative" | "neutral";
+}
 
-const mockMonthlyComparison = [
-  { name: "Jan", value: 24800 },
-  { name: "Feb", value: 26400 },
-  { name: "Mar", value: 28200 },
-  { name: "Apr", value: 25600 },
-  { name: "May", value: 29800 },
-  { name: "Jun", value: 31200 },
-  { name: "Jul", value: 28400 },
-  { name: "Aug", value: 32100 },
-  { name: "Sep", value: 29800 },
-  { name: "Oct", value: 32450 },
-];
-
-const mockTopVendors = [
-  { name: "Tech Supplies", value: 42500 },
-  { name: "Office Essentials", value: 28300 },
-  { name: "Cloud Services", value: 24800 },
-  { name: "Marketing", value: 18900 },
-  { name: "Legal Services", value: 15600 },
-];
-
-const mockQuarterlyTrend = [
-  { name: "Q1 2024", value: 79400 },
-  { name: "Q2 2024", value: 86600 },
-  { name: "Q3 2024", value: 90300 },
-  { name: "Q4 2024", value: 94250 },
-];
-
-const insights = [
-  {
-    title: "Highest Spend",
-    value: "$42,500",
-    icon: TrendingUp,
-    change: "Tech Supplies Co",
-    changeType: "neutral" as const,
-  },
-  {
-    title: "Average Invoice",
-    value: "$2,845",
-    icon: DollarSign,
-    change: "+5.2% vs last quarter",
-    changeType: "positive" as const,
-  },
-  {
-    title: "Cost Reduction",
-    value: "8.5%",
-    icon: TrendingDown,
-    change: "vs previous quarter",
-    changeType: "positive" as const,
-  },
-  {
-    title: "Avg Payment Time",
-    value: "14 days",
-    icon: Calendar,
-    change: "-2 days improvement",
-    changeType: "positive" as const,
-  },
-];
+interface AnalyticsApiResponse {
+  insights: {
+    highestSpend: { vendor: string; amount: number };
+    averageInvoice: number;
+    costReduction: number;
+    avgPaymentTime: number;
+  };
+  monthlyTrend: { name: string; value: number }[];
+  topVendors: { name: string; value: number }[];
+  spendByCategory: { name: string; value: number }[];
+  quarterlyTrend: { name: string; value: number }[];
+}
 
 export default function Analytics() {
+  const [analytics, setAnalytics] = useState<AnalyticsApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/analytics"); // API route returning analytics data
+        const data: AnalyticsApiResponse = await res.json();
+        setAnalytics(data);
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) return <p>Loading analytics...</p>;
+  if (!analytics) return <p>No analytics data available.</p>;
+
+  // Map API insights to DashboardMetricCard format
+  const insights: Insight[] = [
+    {
+      title: "Highest Spend",
+      value: `$${analytics.insights.highestSpend.amount.toLocaleString()}`,
+      icon: TrendingUp,
+      change: analytics.insights.highestSpend.vendor,
+      changeType: "neutral",
+    },
+    {
+      title: "Average Invoice",
+      value: `$${analytics.insights.averageInvoice.toLocaleString()}`,
+      icon: DollarSign,
+      changeType: "positive",
+    },
+    {
+      title: "Cost Reduction",
+      value: `${analytics.insights.costReduction.toFixed(1)}%`,
+      icon: TrendingDown,
+      changeType: "positive",
+    },
+    {
+      title: "Avg Payment Time",
+      value: `${analytics.insights.avgPaymentTime.toFixed(0)} days`,
+      icon: Calendar,
+      changeType: "positive",
+    },
+  ];
+
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-semibold">Analytics</h1>
@@ -101,22 +107,24 @@ export default function Analytics() {
         </Select>
       </div>
 
+      {/* Metric Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {insights.map((insight) => (
           <DashboardMetricCard key={insight.title} {...insight} />
         ))}
       </div>
 
+      {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         <AnalyticsChart
           title="Monthly Spending Trend"
           type="line"
-          data={mockMonthlyComparison}
+          data={analytics.monthlyTrend}
         />
         <AnalyticsChart
           title="Top Vendors by Spend"
           type="bar"
-          data={mockTopVendors}
+          data={analytics.topVendors}
         />
       </div>
 
@@ -124,12 +132,12 @@ export default function Analytics() {
         <AnalyticsChart
           title="Spend by Category"
           type="pie"
-          data={mockSpendByCategory}
+          data={analytics.spendByCategory}
         />
         <AnalyticsChart
           title="Quarterly Growth"
           type="bar"
-          data={mockQuarterlyTrend}
+          data={analytics.quarterlyTrend}
         />
       </div>
     </div>
