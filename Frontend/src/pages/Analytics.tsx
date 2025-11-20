@@ -1,15 +1,7 @@
+import { useEffect, useState, useMemo } from "react";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
-import { TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-"use client";
-
-import { useEffect, useState } from "react";
-import { AnalyticsChart } from "@/components/AnalyticsChart";
-import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, LucideIcon } from "lucide-react";
-
+import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, LucideIcon } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -25,95 +17,6 @@ interface Insight {
   change?: string;
   changeType?: "positive" | "negative" | "neutral";
 }
-
-interface AnalyticsApiResponse {
-  insights: {
-    highestSpend: { vendor: string; amount: number };
-    averageInvoice: number;
-    costReduction: number;
-    avgPaymentTime: number;
-  };
-  monthlyTrend: { name: string; value: number }[];
-  topVendors: { name: string; value: number }[];
-  spendByCategory: { name: string; value: number }[];
-  quarterlyTrend: { name: string; value: number }[];
-}
-
-export default function Analytics() {
-  const [analytics, setAnalytics] = useState<AnalyticsApiResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const res = await fetch("http://localhost:4004/api/v1/sheets/analytics");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const json = await res.json();
-      setAnalytics(json.data);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error("Failed to fetch analytics:", err);
-      setError(err.message || "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }
-  fetchData();
-}, []);
-
-const mockMonthlyComparison = [
-  { name: "Jan", value: 24800 },
-  { name: "Feb", value: 26400 },
-  { name: "Mar", value: 28200 },
-  { name: "Apr", value: 25600 },
-  { name: "May", value: 29800 },
-  { name: "Jun", value: 31200 },
-  { name: "Jul", value: 28400 },
-  { name: "Aug", value: 32100 },
-  { name: "Sep", value: 29800 },
-  { name: "Oct", value: 32450 },
-];
-
-  if (error) return <p className="text-red-600">Error loading analytics: {error}</p>;
-
-  if (!analytics) return <p>No analytics data available.</p>;
-
-  // Safely map API insights to DashboardMetricCard
-  const insights: Insight[] = [
-    {
-      title: "Highest Spend",
-      value: `$${analytics.insights.highestSpend?.amount?.toLocaleString() || "0"}`,
-      icon: TrendingUp,
-      change: analytics.insights.highestSpend?.vendor || "N/A",
-      changeType: "neutral",
-    },
-    {
-      title: "Average Invoice",
-      value: `$${analytics.insights.averageInvoice?.toLocaleString() || "0"}`,
-      icon: DollarSign,
-      changeType: "positive",
-    },
-    {
-      title: "Cost Reduction",
-      value: `${analytics.insights.costReduction?.toFixed(1) || "0"}%`,
-      icon: TrendingDown,
-      changeType: "positive",
-    },
-    {
-      title: "Avg Payment Time",
-      value: analytics.insights.avgPaymentTime
-        ? `${analytics.insights.avgPaymentTime.toFixed(0)} days`
-        : "N/A",
-      icon: Calendar,
-      changeType: "positive",
-    },
-  ];
-
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
 
 interface AnalyticsApiResponse {
   success?: boolean;
@@ -293,44 +196,21 @@ export default function Analytics() {
         </Select>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-
       {/* Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 auto-rows-fr">
-
         {insights.map((insight) => (
           <DashboardMetricCard key={insight.title} {...insight} />
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
-
-        <AnalyticsChart
-          title="Monthly Spending Trend"
-          type="line"
-          data={analytics.monthlyTrend || []}
-        />
-        <AnalyticsChart
-          title="Top Vendors by Spend"
-          type="bar"
-          data={analytics.topVendors || []}
-        />
+        <AnalyticsChart title="Monthly Spending Trend" type="line" data={analytics.monthlyTrend || []} />
+        <AnalyticsChart title="Top Vendors by Spend" type="bar" data={analytics.topVendors || []} />
       </div>
-
       <div className="grid gap-6 md:grid-cols-2">
-        <AnalyticsChart
-          title="Spend by Category"
-          type="pie"
-          data={analytics.spendByCategory || []}
-        />
-        <AnalyticsChart
-          title="Quarterly Growth"
-          type="bar"
-          data={analytics.quarterlyTrend || []}
-        />
+        <AnalyticsChart title="Spend by Category" type="pie" data={analytics.spendByCategory || []} />
+        <AnalyticsChart title="Quarterly Growth" type="bar" data={analytics.quarterlyTrend || []} />
       </div>
       {/* Responsive overflow table for long vendor list */}
       {analytics.topVendors?.length > 0 ? (

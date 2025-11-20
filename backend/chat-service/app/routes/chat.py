@@ -10,13 +10,14 @@ def get_orchestrator():
     return VendorKnowledgeOrchestrator()
 
 # Load / build knowledge base (cron/internal use)
-@router.post("/knowledge/load", summary="Load & Index Vendor Knowledge", description="Load vendor data, generate embeddings, store in vector DB")
+@router.post("/knowledge/load", summary="Load & Index Vendor Knowledge", description="Load vendor data (local sample or remote Drive master.json for a user), generate embeddings, store in vector DB")
 async def load_vendor_knowledge(
     incremental: bool = Query(False, description="Only index new chunks if true"),
+    userId: str | None = Query(None, description="If provided, load remote master.json records for this user from Drive"),
     orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
 ):
     try:
-        result = orchestrator.process_vendor_data(incremental=incremental)
+        result = orchestrator.process_vendor_data(incremental=incremental, user_id=userId)
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])
         # Invalidate analytics snapshots on full reindex (non-incremental) so fresh aggregation occurs next request
@@ -56,12 +57,6 @@ async def load_vendor_knowledge(
 )
 async def chat_query(
     question: str = Query(..., description="User question"),
-<<<<<<< Updated upstream
-    orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
-):
-    try:
-        result = orchestrator.answer_query(question=question)
-=======
     vendor_name: str | None = Query(None, description="Explicit vendor to query; if omitted auto-detection/aggregation used"),
     userId: str | None = Query(None, description="User ID to authorize query (must have active Google connection)"),
     orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
@@ -82,17 +77,14 @@ async def chat_query(
                     if not payload.get("hasGoogleConnection"):
                         raise HTTPException(status_code=403, detail="Assistant disabled: Google account disconnected.")
                 else:
-                    # Non-200 responses treated as soft failures (allow) unless explicit not found
                     if resp.status_code == 404:
                         raise HTTPException(status_code=404, detail="User not found for gating")
             except HTTPException:
                 raise
             except Exception as e:
-                # Log and proceed (do not block) on transient errors
                 print(f"User connection gating check failed: {e}")
 
         result = orchestrator.answer_query(question=question, vendor_name=vendor_name)
->>>>>>> Stashed changes
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])
         return result
