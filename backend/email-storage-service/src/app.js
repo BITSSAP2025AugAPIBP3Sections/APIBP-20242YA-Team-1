@@ -33,15 +33,15 @@ connectDB();
 
 // Rate limiters with JSON responses
 const authLimiter = rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 100,
-  message: { message: "Too many authentication requests. Please try again later.", retryAfter: "15 minutes" }
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  message: { message: "Too many authentication requests. Please try again later.", retryAfter: "1 minute" }
 });
 
 const fetchLimiter = rateLimit({ 
-  windowMs: 15 * 60 * 1000, 
-  max: 50,
-  message: { message: "Too many fetch requests. Please wait before retrying.", retryAfter: "15 minutes" },
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  message: { message: "Too many fetch requests. Please wait before retrying.", retryAfter: "1 minute" },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -131,8 +131,8 @@ app.get("/api-info", (req, res) => {
             "User-friendly error messages with actionable guidance"
         ],
         rateLimit: {
-            auth: "60 requests per 15 minutes",
-            fetch: "30 requests per 15 minutes"
+            auth: "60 requests per minute",
+            fetch: "60 requests per minute"
         },
         contact: {
             documentation: `http://localhost:${config.port}/api-docs`,

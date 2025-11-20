@@ -180,14 +180,13 @@ def get_current_user():
     if not access_token:
         return jsonify({"isAuthenticated": False, "user": None}), 200
 
-    # Use instance method correctly
     valid, payload = user_auth_service.verify_token(access_token)
     if not valid or payload.get("type") != "access":
         return jsonify({"isAuthenticated": False, "user": None}), 200
 
-    try:
-        user_id = int(payload.get("sub"))
-    except (TypeError, ValueError):
+    # MongoDB IDs are strings (ObjectId hex); no integer casting
+    user_id = payload.get("sub")
+    if not user_id:
         return jsonify({"isAuthenticated": False, "user": None}), 200
 
     user = user_auth_service.get_user_by_id(user_id)
@@ -198,7 +197,7 @@ def get_current_user():
         "isAuthenticated": True,
         "user": {
             "id": user["id"],
-            "username": user["username"],
-            "email": user["email"],
+            "username": user.get("username"),
+            "email": user.get("email"),
         }
     }), 200
