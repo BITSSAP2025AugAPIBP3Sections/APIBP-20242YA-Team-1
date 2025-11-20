@@ -95,28 +95,6 @@ const Settings = () => {
 
       <Card className="p-6">
         <h2 className="text-2xl font-semibold mb-6">User Configuration</h2>
-        
-        <div className="space-y-4 mb-6">
-          <div className="space-y-2">
-            <Label htmlFor="userId">
-              User ID <span className="text-xs text-muted-foreground">(Temporary - Auth service down)</span>
-            </Label>
-            <Input
-              id="userId"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="690c7d0ee107fb31784c1b1b"
-            />
-            <p className="text-xs text-muted-foreground">
-              24-character MongoDB ObjectId - This will be saved and used across all pages
-            </p>
-          </div>
-        </div>
-
-        <Separator />
-
-        <h2 className="text-2xl font-semibold mb-6 mt-6">Google Account Connection</h2>
-        
         <div className="space-y-6">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
@@ -188,30 +166,6 @@ const Settings = () => {
               </p>
             </div>
             <Switch data-testid="switch-email-notifications" />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Auto-Process Invoices</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically extract data from new invoices
-              </p>
-            </div>
-            <Switch defaultChecked data-testid="switch-auto-process" />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Weekly Reports</Label>
-              <p className="text-sm text-muted-foreground">
-                Get weekly spending summaries via email
-              </p>
-            </div>
-            <Switch data-testid="switch-weekly-reports" />
           </div>
         </div>
       </Card>

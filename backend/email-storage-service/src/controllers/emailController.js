@@ -23,10 +23,10 @@ export const fetchEmailsController = async (req, res) => {
     if (!userId || !fromDate) {
       return res.status(400).json({
         message: "Missing required fields: 'userId' and 'fromDate' are required.",
-        details: "Please provide a valid MongoDB ObjectId for userId and a date in YYYY-MM-DD format for fromDate.",
+        details: "Provide a valid MongoDB ObjectId for userId and a date or datetime (YYYY-MM-DD or ISO timestamp).",
         example: {
           userId: "690c7d0ee107fb31784c1b1b",
-          fromDate: "2024-01-01"
+          fromDate: "2024-01-01T10:30:00Z"
         }
       });
     }
@@ -70,8 +70,9 @@ export const fetchEmailsController = async (req, res) => {
       lastSyncedAt: dbUser.lastSyncedAt 
     });
 
-    //  Manual Fetch Immediately
+    // Manual Fetch
     if (schedule === "manual") {
+      // Pass through fromDate as provided (Date parsing with time handled downstream)
       const result = await fetchAndProcessEmails(userId, fromDate, { emails: emailList, onlyPdf, forceSync });
       return res.status(200).json({
         message: "Manual invoice fetch completed.",
@@ -90,10 +91,10 @@ export const fetchEmailsController = async (req, res) => {
       });
     }
 
-    // If schedule is not valid
+    // Invalid schedule
     return res.status(400).json({ 
       message: "Invalid schedule format.",
-      details: "The 'schedule' parameter must be either 'manual' for immediate execution, or an object with 'type' and 'frequency' for automated scheduling.",
+      details: "The 'schedule' parameter must be either 'manual' or an object with 'type' and 'frequency'.",
       validFormats: [
         "manual",
         { type: "auto", frequency: "hourly" },
@@ -105,8 +106,6 @@ export const fetchEmailsController = async (req, res) => {
 
   } catch (error) {
     console.error("Error in fetchEmailsController:", error);
-    
-    // Provide specific error messages based on error type
     let userMessage = "Failed to fetch and process emails.";
     let details = error.message;
     let suggestions = [];
@@ -117,8 +116,8 @@ export const fetchEmailsController = async (req, res) => {
       suggestions = ["Re-authenticate by visiting /auth/google", "Check if Google account permissions are still granted"];
     } else if (error.message?.includes("Invalid date")) {
       userMessage = "Invalid date format.";
-      details = "The 'fromDate' parameter must be in YYYY-MM-DD format.";
-      suggestions = ["Use format: 2024-01-01", "Ensure the date is valid and not in the future"];
+      details = "The 'fromDate' value could not be parsed.";
+      suggestions = ["Use format YYYY-MM-DD or a valid ISO datetime", "Ensure the date is not in the future"];
     } else if (error.message?.includes("Rate limit")) {
       userMessage = "Gmail API rate limit exceeded.";
       details = "Too many requests to Gmail API. Please wait before retrying.";

@@ -30,8 +30,14 @@ const EmailSync = () => {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Load from localStorage to persist across page changes
-  const [userId, setUserId] = useState(() => localStorage.getItem("tempUserId") || "690c7d0ee107fb31784c1b1b");
-  const [fromDate, setFromDate] = useState(() => localStorage.getItem("emailSyncFromDate") || new Date().toISOString().split('T')[0]);
+  const [userId, setUserId] = useState(() => localStorage.getItem("tempUserId"));
+  const [fromDate, setFromDate] = useState(() => {
+    const stored = localStorage.getItem("emailSyncFromDate");
+    if (stored) return stored; // stored may already be datetime-local string
+    const now = new Date();
+    const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+    return isoLocal;
+  });
   const [vendorEmails, setVendorEmails] = useState(() => localStorage.getItem("emailSyncVendorEmails") || "");
   const [scheduleType, setScheduleType] = useState<"manual" | "auto">(() => (localStorage.getItem("emailSyncScheduleType") as "manual" | "auto") || "manual");
   const [frequency, setFrequency] = useState<"hourly" | "daily" | "weekly">(() => (localStorage.getItem("emailSyncFrequency") as "hourly" | "daily" | "weekly") || "daily");
@@ -184,7 +190,7 @@ const EmailSync = () => {
 
     const body: any = {
       userId,
-      fromDate,
+      fromDate: new Date(fromDate).toISOString(), // send full ISO with time
       forceSync,
       schedule: scheduleType === "manual" ? "manual" : { type: "auto", frequency },
     };
@@ -446,28 +452,12 @@ const EmailSync = () => {
           </h3>
 
           <div className="space-y-4">
-            {/* Temp User ID Field */}
-            <div className="space-y-2">
-              <Label htmlFor="userId">
-                User ID <span className="text-xs text-muted-foreground">(Temporary - Auth service down)</span>
-              </Label>
-              <Input
-                id="userId"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="690c7d0ee107fb31784c1b1b"
-              />
-              <p className="text-xs text-muted-foreground">
-                24-character MongoDB ObjectId
-              </p>
-            </div>
-
             {/* From Date */}
             <div className="space-y-2">
-              <Label htmlFor="fromDate">From Date *</Label>
+              <Label htmlFor="fromDate">From Date & Time <span className="text-red-500">*</span></Label>
               <Input
                 id="fromDate"
-                type="date"
+                type="datetime-local"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
