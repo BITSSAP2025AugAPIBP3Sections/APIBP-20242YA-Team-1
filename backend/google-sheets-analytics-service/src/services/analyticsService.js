@@ -16,10 +16,7 @@ export const fetchAnalyticsData = async () => {
     return { message: "No data available in sheet" };
   }
 
-  const headers = rows[0];
   const dataRows = rows.slice(1);
-
-  const totalRecords = dataRows.length;
 
   let totalAmount = 0;
   let totalInvoiceCount = 0;
