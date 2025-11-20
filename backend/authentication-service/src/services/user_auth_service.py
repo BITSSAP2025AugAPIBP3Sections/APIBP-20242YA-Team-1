@@ -1,6 +1,7 @@
 import os
-# Removed sqlite3 import; added pymongo and bson ObjectId
+import re
 import datetime
+import logging 
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import DuplicateKeyError
 from bson import ObjectId
@@ -13,12 +14,18 @@ from utils.config import (
     REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class UserAuthService:
     def __init__(self, db_path=None):  # db_path kept for backward compat (unused now)
         mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
         db_name = os.getenv("MONGO_DB_NAME", "authentication_service")
-        self.client = MongoClient(mongo_uri)
+        self.client = MongoClient(  
+            mongo_uri,  
+            serverSelectionTimeoutMS=10000,  
+            connectTimeoutMS=10000  
+        )  
         self.db = self.client[db_name]
         self.collection = self.db["users"]
         self._init_indexes()
@@ -50,7 +57,6 @@ class UserAuthService:
         # Basic normalization without auto-suffixing
         if not desired:
             return None
-        import re
         base = desired.strip().lower()
         base = re.sub(r"\s+", "_", base)
         base = re.sub(r"[^a-z0-9_\-]", "", base)
@@ -197,7 +203,7 @@ class UserAuthService:
             username = self._generate_unique_username(base_username)
         else:
             username = base_username
-        res = self.collection.insert_one({
+        self.collection.insert_one({
             "email": email.lower(),
             "username": username,
             "google_id": google_id,

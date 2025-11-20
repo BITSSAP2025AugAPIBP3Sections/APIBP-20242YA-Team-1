@@ -110,17 +110,6 @@ http://localhost:4001/docs
 
 ---
 
-##  Data Migration from SQLite (optional)
-If you have an existing `users.db` from the prior SQLite version, run the migration script:
-```
-python scripts/migrate_sqlite_to_mongo.py users.db
-```
-This will copy users into Mongo preserving emails, usernames, password hashes and Google IDs. IDs will become Mongo ObjectIds.
-
-After migration you may remove the old `users.db` file.
-
----
-
 ##  API Endpoints
 
 | Method | Endpoint          | Description                             |

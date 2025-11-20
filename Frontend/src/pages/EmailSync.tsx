@@ -35,7 +35,7 @@ const EmailSync = () => {
     const stored = localStorage.getItem("emailSyncFromDate");
     if (stored) return stored; // stored may already be datetime-local string
     const now = new Date();
-    const isoLocal = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
+    const isoLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16); // YYYY-MM-DDTHH:MM
     return isoLocal;
   });
   const [vendorEmails, setVendorEmails] = useState(() => localStorage.getItem("emailSyncVendorEmails") || "");
