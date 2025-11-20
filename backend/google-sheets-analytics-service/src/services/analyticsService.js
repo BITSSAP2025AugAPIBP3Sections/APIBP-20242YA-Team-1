@@ -8,7 +8,7 @@ const SHEET_NAME = "Expenses";
 export const fetchAnalyticsData = async () => {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAME}!A:H`, // Adjust if more columns exist
+    range: `${SHEET_NAME}!A:H`, // Adjust if you have more columns
   });
 
   const rows = response.data.values || [];
@@ -24,17 +24,15 @@ export const fetchAnalyticsData = async () => {
   const categorySpend = {};
   const monthlySpend = {};
   const quarterlySpend = {};
-
   let totalPaymentDays = 0;
-  let paidInvoiceCount = 0;
-  let previousTotalAmount = 0; // for cost reduction if historical data exists
+  let previousTotalAmount = 0; // For cost reduction (if historical data exists)
 
   dataRows.forEach((row) => {
     const vendor = row[0] || "Unknown Vendor";
-    const category = row[1] || "Uncategorized";
-    const invoiceDateStr = row[2];
-    const paymentDateStr = row[3];
-    const invoiceAmount = parseFloat(row[7]) || 0;
+    const category = row[1] || "Uncategorized"; // Assuming column B is category
+    const invoiceAmount = parseFloat(row[7]) || 0; // Amount column
+    const invoiceDateStr = row[2]; // Assuming column C is invoice date
+    const paymentDateStr = row[3]; // Assuming column D is payment date
 
     totalAmount += invoiceAmount;
     totalInvoiceCount++;
@@ -48,24 +46,19 @@ export const fetchAnalyticsData = async () => {
     // Monthly spend
     if (invoiceDateStr) {
       const invoiceDate = new Date(invoiceDateStr);
-      if (!isNaN(invoiceDate.getTime())) {
-        const monthKey = invoiceDate.toLocaleString("default", { month: "short" });
-        monthlySpend[monthKey] = (monthlySpend[monthKey] || 0) + invoiceAmount;
+      const monthKey = invoiceDate.toLocaleString("default", { month: "short" });
+      monthlySpend[monthKey] = (monthlySpend[monthKey] || 0) + invoiceAmount;
 
-        // Quarterly spend
-        const quarterKey = `Q${Math.floor(invoiceDate.getMonth() / 3) + 1} ${invoiceDate.getFullYear()}`;
-        quarterlySpend[quarterKey] = (quarterlySpend[quarterKey] || 0) + invoiceAmount;
-      }
+      // Quarterly spend
+      const quarter = `Q${Math.floor(invoiceDate.getMonth() / 3) + 1} ${invoiceDate.getFullYear()}`;
+      quarterlySpend[quarter] = (quarterlySpend[quarter] || 0) + invoiceAmount;
     }
 
     // Average payment time
     if (invoiceDateStr && paymentDateStr) {
       const invoiceDate = new Date(invoiceDateStr);
       const paymentDate = new Date(paymentDateStr);
-      if (!isNaN(invoiceDate.getTime()) && !isNaN(paymentDate.getTime())) {
-        totalPaymentDays += (paymentDate.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24); // days
-        paidInvoiceCount++;
-      }
+      totalPaymentDays += (paymentDate - invoiceDate) / (1000 * 60 * 60 * 24); // days
     }
   });
 
@@ -76,42 +69,40 @@ export const fetchAnalyticsData = async () => {
   );
 
   const averageInvoice = totalAmount / totalInvoiceCount;
-  const avgPaymentTime = paidInvoiceCount ? totalPaymentDays / paidInvoiceCount : 0;
+  const avgPaymentTime = totalPaymentDays / totalInvoiceCount;
 
+  // Cost reduction placeholder: you may calculate from historical data
   const costReduction = previousTotalAmount
     ? ((previousTotalAmount - totalAmount) / previousTotalAmount) * 100
     : 0;
 
-  // Top vendors (top 5)
+  // Top vendors sorted
   const topVendors = Object.entries(vendorSpend)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
-    .slice(0, 5);
+    .slice(0, 5); // top 5 vendors
 
-  // Spend by category
+  // Spend by category sorted
   const spendByCategory = Object.entries(categorySpend)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // Monthly trend (calendar order)
-  const monthsOrder = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  // Monthly trend sorted by calendar order
+  const monthsOrder = [
+    "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
+  ];
   const monthlyTrend = monthsOrder
     .filter((month) => monthlySpend[month])
     .map((month) => ({ name: month, value: monthlySpend[month] }));
 
-  // Quarterly trend sorted by year and quarter number
-  const quarterlyTrend = Object.entries(quarterlySpend)
-    .map(([name, value]) => {
-      const [q, year] = name.split(" ");
-      const qNum = parseInt(q.replace("Q", ""));
-      return { name, value, year: parseInt(year), qNum };
-    })
-    .sort((a, b) => a.year - b.year || a.qNum - b.qNum)
-    .map(({ name, value }) => ({ name, value }));
+  // Quarterly trend sorted
+  const quarterlyTrend = Object.keys(quarterlySpend)
+    .sort()
+    .map((q) => ({ name: q, value: quarterlySpend[q] }));
 
   return {
-    totalRecords: totalInvoiceCount,
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
+    totalRecords,
+    totalAmount,
     insights: {
       highestSpend: highestSpendVendor,
       averageInvoice: parseFloat(averageInvoice.toFixed(2)),

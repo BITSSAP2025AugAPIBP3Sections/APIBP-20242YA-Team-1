@@ -1,6 +1,6 @@
 import express from "express";
 import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
-import { getInvoicesByVendor, getVendorsByUser } from "../controllers/driveController.js";
+import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -114,6 +114,7 @@ router.get("/drive/users/:userId/vendors", getVendorsByUser);
  *   }
  */
 router.get("/drive/users/:userId/vendors/:vendorId/invoices", getInvoicesByVendor);
+router.get("/drive/users/:userId/vendors/:vendorId/master", getVendorMaster);
 
 /**
  * @route   GET /api/v1/users/:userId/sync-status

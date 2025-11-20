@@ -36,58 +36,49 @@ interface AnalyticsApiResponse {
 export default function Analytics() {
   const [analytics, setAnalytics] = useState<AnalyticsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
-  async function fetchData() {
-    try {
-      const res = await fetch("http://localhost:4004/api/v1/sheets/analytics");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const json = await res.json();
-      setAnalytics(json.data);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      console.error("Failed to fetch analytics:", err);
-      setError(err.message || "Unknown error");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/analytics"); // API route returning analytics data
+        const data: AnalyticsApiResponse = await res.json();
+        setAnalytics(data);
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
-  fetchData();
-}, []);
+    fetchData();
+  }, []);
 
   if (loading) return <p>Loading analytics...</p>;
-
-  if (error) return <p className="text-red-600">Error loading analytics: {error}</p>;
-
   if (!analytics) return <p>No analytics data available.</p>;
 
-  // Safely map API insights to DashboardMetricCard
+  // Map API insights to DashboardMetricCard format
   const insights: Insight[] = [
     {
       title: "Highest Spend",
-      value: `$${analytics.insights.highestSpend?.amount?.toLocaleString() || "0"}`,
+      value: `$${analytics.insights.highestSpend.amount.toLocaleString()}`,
       icon: TrendingUp,
-      change: analytics.insights.highestSpend?.vendor || "N/A",
+      change: analytics.insights.highestSpend.vendor,
       changeType: "neutral",
     },
     {
       title: "Average Invoice",
-      value: `$${analytics.insights.averageInvoice?.toLocaleString() || "0"}`,
+      value: `$${analytics.insights.averageInvoice.toLocaleString()}`,
       icon: DollarSign,
       changeType: "positive",
     },
     {
       title: "Cost Reduction",
-      value: `${analytics.insights.costReduction?.toFixed(1) || "0"}%`,
+      value: `${analytics.insights.costReduction.toFixed(1)}%`,
       icon: TrendingDown,
       changeType: "positive",
     },
     {
       title: "Avg Payment Time",
-      value: analytics.insights.avgPaymentTime
-        ? `${analytics.insights.avgPaymentTime.toFixed(0)} days`
-        : "N/A",
+      value: `${analytics.insights.avgPaymentTime.toFixed(0)} days`,
       icon: Calendar,
       changeType: "positive",
     },
@@ -128,12 +119,12 @@ useEffect(() => {
         <AnalyticsChart
           title="Monthly Spending Trend"
           type="line"
-          data={analytics.monthlyTrend || []}
+          data={analytics.monthlyTrend}
         />
         <AnalyticsChart
           title="Top Vendors by Spend"
           type="bar"
-          data={analytics.topVendors || []}
+          data={analytics.topVendors}
         />
       </div>
 
@@ -141,12 +132,12 @@ useEffect(() => {
         <AnalyticsChart
           title="Spend by Category"
           type="pie"
-          data={analytics.spendByCategory || []}
+          data={analytics.spendByCategory}
         />
         <AnalyticsChart
           title="Quarterly Growth"
           type="bar"
-          data={analytics.quarterlyTrend || []}
+          data={analytics.quarterlyTrend}
         />
       </div>
     </div>

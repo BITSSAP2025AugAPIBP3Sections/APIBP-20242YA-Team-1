@@ -27,6 +27,8 @@ MONGO_URI=mongodb+srv://<user>:<password>@<cluster>/<dbName>
 GOOGLE_CLIENT_ID=<your_google_client_id>
 GOOGLE_CLIENT_SECRET=<your_google_client_secret>
 GOOGLE_REDIRECT_URI=http://localhost:4002/auth/google/callback
+OCR_SERVICE_BASE_URL=http://localhost:4003
+OCR_TRIGGER_TOKEN=<shared_secret>
 LOG_LEVEL=info
 ```
 
@@ -160,8 +162,15 @@ List invoices for a vendor folder
   - Parses subject line for vendor keywords
   - Falls back to domain-based or username-based detection
 - If a vendor filter is provided, skip messages that do not match
+- Before uploading, query Drive for an existing file with the same name in the vendor's `invoices` folder to prevent duplicates
 - Download allowed attachments and upload to Drive under `invoiceAutomation/<Vendor>/invoices`
 - Update `lastSyncedAt` after a successful run to enable incremental sync on later requests
+
+### Automated OCR Hand-off
+- Each successful upload triggers a call to the OCR Extraction Service (`OCR_SERVICE_BASE_URL`)
+- The service sends the Drive file IDs of newly uploaded invoices grouped by vendor
+- OCR service extracts structured JSON, stores `master.json` per vendor folder, and pushes the consolidated file back to Drive without duplicating previous entries
+- Failures during OCR trigger logging but do not interrupt email ingestion
 
 ### Vendor Detection Examples
 | Email From | Subject | Detected Vendor |
