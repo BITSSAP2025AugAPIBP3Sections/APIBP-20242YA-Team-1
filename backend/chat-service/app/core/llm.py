@@ -37,6 +37,14 @@ class GeminiLLM:
         full_prompt = f"System: {system}\nUser: {prompt}" if system else prompt
         try:
             response = self.model.generate_content(full_prompt)
+            # Handle safety or empty parts gracefully before accessing response.text
+            if hasattr(response, "candidates") and response.candidates:
+                for c in response.candidates:
+                    # Gemini SDK uses finish_reason (enum) - map known numeric codes
+                    fr = getattr(c, "finish_reason", None) or getattr(c, "finishReason", None)
+                    # Common finish reasons (approx): 0=STOP,1=MAX_TOKENS,2=SAFETY,3=RECITATION,4=OTHER
+                    if fr in (2, "SAFETY") and (not c.content or not getattr(c.content, "parts", [])):
+                        return ("Response blocked by safety filters. Please rephrase the question to be strictly factual about vendor invoices/invoice data without requesting disallowed content.")
             if hasattr(response, "text") and response.text:
                 return response.text.strip()
             # Fallback: concatenate parts

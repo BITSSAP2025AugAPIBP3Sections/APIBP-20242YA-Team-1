@@ -179,6 +179,13 @@ export async function resetUserSyncStatus(userId: string): Promise<{
   });
 }
 
+/**
+ * Disconnect Google account (clear stored OAuth tokens)
+ */
+export async function disconnectGoogleAccount(userId: string): Promise<{ data: { message: string; userId: string; hasGoogleConnection?: boolean }; response: Response }> {
+  return apiCall(`/api/v1/users/${userId}/disconnect-google`, { method: "POST" });
+}
+
 // ============================================================================
 // VENDOR APIs
 // ============================================================================
@@ -190,7 +197,10 @@ export async function getVendors(userId: string): Promise<{
   data: { userId: string; total: number; vendors: Vendor[] };
   response: Response;
 }> {
-  return apiCall(`/api/v1/drive/users/${userId}/vendors`);
+  console.log('[api.getVendors] fetching vendors for userId', userId);
+  const result = await apiCall<{ userId: string; total: number; vendors: Vendor[] }>(`/api/v1/drive/users/${userId}/vendors`);
+  console.log('[api.getVendors] response status', result.response.status, 'data:', result.data);
+  return result;
 }
 
 // ============================================================================
@@ -216,6 +226,54 @@ export async function getInvoices(
   return apiCall(`/api/v1/drive/users/${userId}/vendors/${vendorId}/invoices`);
 }
 
+<<<<<<< Updated upstream
+=======
+export async function getVendorMaster(
+  userId: string,
+  vendorId: string
+): Promise<{
+  data: MasterSummary;
+  response: Response;
+}> {
+  return apiCall(`/api/v1/drive/users/${userId}/vendors/${vendorId}/master`);
+}
+
+// ============================================================================
+// CHAT / RAG APIs
+// ============================================================================
+
+/**
+ * Query Vendor knowledge base using RAG pipeline.
+ */
+export async function getChatAnswer(
+  question: string,
+  vendorName?: string,
+  userId?: string
+): Promise<{ data: ChatAnswerResponse; response: Response }> {
+  const qs = new URLSearchParams({ question });
+  if (vendorName) qs.append("vendor_name", vendorName);
+  if (userId) qs.append("userId", userId);
+  const url = `${CHAT_BASE_URL}/query?${qs.toString()}`;
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const data = await response.json();
+  return { data, response };
+}
+
+export async function loadChatKnowledge(userId: string, incremental = true): Promise<{ data: any; response: Response }> {
+  const url = `${CHAT_BASE_URL}/knowledge/load?userId=${encodeURIComponent(userId)}&incremental=${incremental}`;
+  const response = await fetch(url, { method: "POST", headers: { Accept: "application/json" } });
+  const data = await response.json();
+  return { data, response };
+}
+
+export async function getChatVendorSummary(vendorName: string): Promise<{ data: ChatVendorSummary; response: Response }> {
+  const url = `${CHAT_BASE_URL}/vendor/summary?vendor_name=${encodeURIComponent(vendorName)}`;
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  const data = await response.json();
+  return { data, response };
+}
+
+>>>>>>> Stashed changes
 // ============================================================================
 // EXPORTS
 // ============================================================================
@@ -234,6 +292,7 @@ export const api = {
   // User
   getUserSyncStatus,
   resetUserSyncStatus,
+  disconnectGoogleAccount,
   
   // Vendor
   getVendors,

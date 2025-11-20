@@ -88,7 +88,11 @@ const ProtectedLayout = ({
             <ThemeToggle />
         </header>
         <main className="flex-1 overflow-auto">
+<<<<<<< Updated upstream
           <div className="max-w-7xl mx-auto p-6">
+=======
+          <div className="max-w-7xl mx-auto p-4">
+>>>>>>> Stashed changes
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/email-sync" element={<EmailSync />} />

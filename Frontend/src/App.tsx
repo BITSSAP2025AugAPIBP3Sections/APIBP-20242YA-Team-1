@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Register from './pages/Register'; 
 import Reset from './pages/Reset'; 
 import { AuthProvider, useAuth } from "./contexts/AuthContext"; 
+import { UserProvider } from "./contexts/UserContext";
 import Home from "./pages/Home";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 
@@ -39,10 +40,12 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-          <Toaster />
+          <UserProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+            <Toaster />
+          </UserProvider>
         </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>

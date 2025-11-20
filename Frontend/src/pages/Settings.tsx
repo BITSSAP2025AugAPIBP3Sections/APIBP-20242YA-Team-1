@@ -5,11 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Card } from "@/components/ui/card";
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, Database, FolderOpen, Mail, CheckCircle2, ExternalLink } from "lucide-react";
+import { AlertCircle, Database, FolderOpen, Mail, CheckCircle2, ExternalLink, Unplug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import api, { type SyncStatus } from "@/services/api";
+import api, { type SyncStatus, disconnectGoogleAccount } from "@/services/api";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -80,8 +80,25 @@ const Settings = () => {
   }, [toast, fetchSyncStatus]);
 
   const connectGoogleAccount = () => {
-    // Direct redirect to OAuth
     window.location.href = api.getGoogleAuthUrl();
+  };
+
+  const disconnectGoogle = async () => {
+    if (!userId) return;
+    const confirm = window.confirm("Disconnect Google Drive & Gmail integration? This will stop further indexing until reconnected.");
+    if (!confirm) return;
+    try {
+      const { data, response } = await disconnectGoogleAccount(userId);
+      if (response.ok) {
+        setIsConnected(false);
+        setSyncStatus(s => s ? { ...s, hasGoogleConnection: false } : s);
+        toast({ title: "Disconnected", description: data.message || "Google account disconnected." });
+      } else {
+        toast({ title: "Disconnect Failed", description: data.message || 'Unknown error', variant: 'destructive' });
+      }
+    } catch (e) {
+      toast({ title: "Network Error", description: 'Failed to disconnect. Try again later.', variant: 'destructive' });
+    }
   };
 
   return (
@@ -134,13 +151,17 @@ const Settings = () => {
                 <li>Vendor detection and categorization</li>
               </ul>
               {isConnected ? (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" onClick={fetchSyncStatus} disabled={isLoading}>
                     Refresh Status
                   </Button>
                   <Button variant="outline" onClick={connectGoogleAccount}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Reconnect
+                  </Button>
+                  <Button variant="destructive" onClick={disconnectGoogle} data-testid="button-disconnect-google">
+                    <Unplug className="h-4 w-4 mr-2" />
+                    Disconnect
                   </Button>
                 </div>
               ) : (

@@ -13,6 +13,12 @@ class Invoice(BaseModel):
     invoice_date: str
     total_amount: Optional[str] = ""
     line_items: List[LineItem] = []
+    # Extended metadata fields (optional)
+    drive_file_id: Optional[str] = ""
+    file_name: Optional[str] = ""
+    processed_at: Optional[str] = ""
+    web_view_link: Optional[str] = ""
+    web_content_link: Optional[str] = ""
 
 class Vendor(BaseModel):
     vendor_name: str

@@ -92,3 +92,42 @@ export const resetUserSyncStatus = async (req, res) => {
     });
   }
 };
+
+export const disconnectGoogleAccount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!/^[a-f0-9]{24}$/i.test(userId)) {
+      return res.status(400).json({
+        message: "Invalid userId format.",
+        details: "userId must be a valid 24-character MongoDB ObjectId.",
+        providedValue: userId
+      });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+        details: "No user exists with the provided userId.",
+        userId
+      });
+    }
+    // Null out Google tokens
+    await User.findByIdAndUpdate(userId, {
+      googleAccessToken: null,
+      googleRefreshToken: null,
+    });
+    logger.info("Google account disconnected", { userId, email: user.email });
+    return res.status(200).json({
+      message: "Google Drive connection disconnected successfully.",
+      userId,
+      hasGoogleConnection: false
+    });
+  } catch (error) {
+    logger.error(error, { context: "disconnectGoogleAccount" });
+    return res.status(500).json({
+      message: "Failed to disconnect Google account.",
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};

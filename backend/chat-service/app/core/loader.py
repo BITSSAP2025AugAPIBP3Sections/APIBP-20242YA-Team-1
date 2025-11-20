@@ -1,6 +1,7 @@
 import json
 import os
 import hashlib
+import re
 from typing import List, Dict, Any
 from datetime import datetime
 from app.models.schema import Vendor, Invoice, VendorDataset, KnowledgeChunk
@@ -113,16 +114,28 @@ class VendorDataLoader:
     
     def _create_vendor_summary_chunk(self, vendor: Vendor) -> KnowledgeChunk:
         """Create a summary chunk for a vendor."""
-        total_amount = sum(float(invoice.total_amount or 0) for invoice in vendor.invoices if invoice.total_amount)
+        def _parse_amount(val: Any) -> float:
+            if val is None:
+                return 0.0
+            s = str(val).strip()
+            # Remove currency symbols, commas, stray spaces
+            s = re.sub(r"[₹$,]", "", s)
+            # Keep digits and dot only
+            s = re.sub(r"[^0-9.]", "", s)
+            try:
+                return float(s) if s else 0.0
+            except Exception:
+                return 0.0
+        total_amount = sum(_parse_amount(invoice.total_amount) for invoice in vendor.invoices if invoice.total_amount)
         invoice_count = len(vendor.invoices)
         
         content = f"""
         Vendor: {vendor.vendor_name}
         Last Updated: {vendor.last_updated}
         Total Invoices: {invoice_count}
-        Total Amount: ${total_amount:.2f}
+        Total Amount (INR): ₹{total_amount:,.2f}
         
-        This vendor has {invoice_count} invoices with a combined value of ${total_amount:.2f}.
+        This vendor has {invoice_count} invoices with a combined value of ₹{total_amount:,.2f}.
         """
         
         chunk_id = hashlib.md5(f"{vendor.vendor_name}_summary".encode()).hexdigest()
@@ -136,29 +149,47 @@ class VendorDataLoader:
                 "vendor_name": vendor.vendor_name,
                 "last_updated": vendor.last_updated,
                 "invoice_count": invoice_count,
-                "total_amount": total_amount
+                "total_amount": total_amount  # numeric INR
             }
         )
     
     def _create_invoice_chunk(self, vendor: Vendor, invoice: Invoice) -> KnowledgeChunk:
         """Create a knowledge chunk for an individual invoice."""
-        amount_str = f"${float(invoice.total_amount or 0):.2f}" if invoice.total_amount else "N/A"
+        def _parse_amount(val: Any) -> float:
+            if val is None:
+                return 0.0
+            s = str(val).strip()
+            s = re.sub(r"[₹$,]", "", s)
+            s = re.sub(r"[^0-9.]", "", s)
+            try:
+                return float(s) if s else 0.0
+            except Exception:
+                return 0.0
+        numeric_amount = _parse_amount(invoice.total_amount)
+        amount_str = f"₹{numeric_amount:,.2f}" if invoice.total_amount else "N/A"
         
         # Create a readable line items summary
         line_items_summary = ""
         if invoice.line_items:
-            line_items_summary = "\nLine Items:\n"
+            line_items_summary = "\nLine Items (INR):\n"
             for item in invoice.line_items:
-                line_items_summary += f"- {item.item_description}: {item.quantity} x ${item.unit_price} = ${item.amount}\n"
+                item_amt = _parse_amount(item.amount)
+                unit_price_amt = _parse_amount(item.unit_price)
+                line_items_summary += f"- {item.item_description}: {item.quantity or ''} x ₹{unit_price_amt:,.2f} = ₹{item_amt:,.2f}\n"
         
+        # Include link & file metadata inline so embeddings capture reference context.
         content = f"""
         Invoice Details:
         Vendor: {vendor.vendor_name}
         Invoice Number: {invoice.invoice_number}
         Amount: {amount_str}
         Date: {invoice.invoice_date}
+        Drive File ID: {getattr(invoice, 'drive_file_id', '')}
+        File Name: {getattr(invoice, 'file_name', '')}
+        Processed At: {getattr(invoice, 'processed_at', '')}
+        Web View Link: {getattr(invoice, 'web_view_link', '')}
+        Web Content Link: {getattr(invoice, 'web_content_link', '')}
         {line_items_summary}
-        
         This is an invoice from {vendor.vendor_name} for {amount_str} dated {invoice.invoice_date}.
         """
         
@@ -185,6 +216,11 @@ class VendorDataLoader:
                 "invoice_number": invoice.invoice_number,
                 "invoice_date": invoice.invoice_date,
                 "line_items": line_items_dict,  # Use dict instead of LineItem objects
-                "total_amount": invoice.total_amount
+                "total_amount": numeric_amount,  # numeric INR value
+                "drive_file_id": getattr(invoice, 'drive_file_id', ''),
+                "file_name": getattr(invoice, 'file_name', ''),
+                "processed_at": getattr(invoice, 'processed_at', ''),
+                "web_view_link": getattr(invoice, 'web_view_link', ''),
+                "web_content_link": getattr(invoice, 'web_content_link', ''),
             }
         )
