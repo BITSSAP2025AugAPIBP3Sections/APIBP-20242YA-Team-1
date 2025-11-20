@@ -36,9 +36,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const resp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, {
           credentials: 'include', // sends cookies
         });
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          console.warn('Session check returned non-JSON (likely HTML redirect). Treating as unauthenticated.');
+          setUser(null);
+          return;
+        }
         const data = await resp.json();
         if (data.isAuthenticated && data.user) {
-          setUser(data.user)
+          setUser(data.user);
         } else {
           setUser(null);
         }
@@ -114,18 +120,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
       const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
-        credentials: "include",
+        credentials: 'include',
       });
-  
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        return { success: false, error: 'Unexpected response (non-JSON) from auth/login' };
+      }
       const data = await response.json();
-  
       if (data.auth_url) {
-        // redirect to Google's OAuth URL
         window.location.href = data.auth_url;
         return { success: true };
-      } else {
-        return { success: false, error: 'Google auth URL not received' };
       }
+      return { success: false, error: 'Google auth URL not received' };
     } catch (e) {
       console.error('Google login error:', e);
       return { success: false, error: 'Network error during Google login' };

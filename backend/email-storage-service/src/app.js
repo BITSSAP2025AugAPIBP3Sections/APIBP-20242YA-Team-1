@@ -10,6 +10,7 @@ import logger, { requestLogger } from "./utils/logger.js";
 import swaggerUi from "swagger-ui-express";
 import {swaggerDocs} from "./routes/swaggerDocs.js";
 import emailRoutes from "./routes/emailRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 import {connectDB} from "./config/db.js";
 import { getGoogleAuthURL, googleOAuthCallback } from "./controllers/authController.js";
 
@@ -147,6 +148,7 @@ app.get("/auth/google/callback", authLimiter, googleOAuthCallback);
 
 // Importing email routes
 app.use("/api/v1", fetchLimiter, emailRoutes);
+app.use("/api/v1", analyticsRoutes);
 
 // Start the server
 

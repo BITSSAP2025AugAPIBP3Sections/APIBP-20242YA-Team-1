@@ -1,7 +1,10 @@
 import express from "express";
 import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
-import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
+import { getInvoicesByVendor, getVendorsByUser } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus } from "../controllers/userController.js";
+
+import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
+import { getUserSyncStatus, resetUserSyncStatus, disconnectGoogleAccount } from "../controllers/userController.js";
 
 const router = express.Router();
 
@@ -173,6 +176,15 @@ router.get("/users/:userId/sync-status", getUserSyncStatus);
  *   }
  */
 router.delete("/users/:userId/sync-status", resetUserSyncStatus);
+
+/**
+ * @route   POST /api/v1/users/:userId/disconnect-google
+ * @desc    Remove stored Google OAuth tokens for user (disconnect Drive integration)
+ * @access  Public (requires valid userId)
+ * @returns {200} Success - Tokens cleared
+ * @returns {404} Not Found - User not found
+ */
+router.post("/users/:userId/disconnect-google", disconnectGoogleAccount);
 
 /**
  * @route   GET /api/v1/emails/schedule/:userId

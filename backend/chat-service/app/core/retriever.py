@@ -126,19 +126,15 @@ class VectorDatabase:
     def search_by_vendor(self, vendor_name: str, n_results: int = 10) -> Dict[str, Any]:
         """Search for chunks by vendor name."""
         try:
-            results = self.collection.query(
-                query_texts=[f"vendor {vendor_name}"],
-                n_results=n_results,
-                where={"vendor_name": vendor_name},
-                include=["documents", "metadatas", "distances"]
-            )
-            
-            return {
-                "documents": results["documents"][0] if results["documents"] else [],
-                "metadatas": results["metadatas"][0] if results["metadatas"] else [],
-                "distances": results["distances"][0] if results["distances"] else []
-            }
-            
+            # Avoid query_texts embedding dimension mismatch; just fetch all docs for vendor.
+            results = self.collection.get(where={"vendor_name": vendor_name}, include=["documents", "metadatas"])
+            documents = results.get("documents", [])
+            metadatas = results.get("metadatas", [])
+            # Optionally cap to n_results for summary context
+            if n_results and n_results > 0:
+                documents = documents[:n_results]
+                metadatas = metadatas[:n_results]
+            return {"documents": documents, "metadatas": metadatas, "distances": []}
         except Exception as e:
             print(f"Error searching by vendor: {str(e)}")
             return {"documents": [], "metadatas": [], "distances": []}
@@ -191,4 +187,81 @@ class VectorDatabase:
             return sorted(self.vendor_names)
         except Exception as e:
             print(f"Error listing vendors: {e}")
+            return []
+
+    def get_all_by_vendor(self, vendor_name: str) -> Dict[str, Any]:
+        """Return all documents & metadatas for a vendor (no similarity query)."""
+        try:
+            results = self.collection.get(where={"vendor_name": vendor_name}, include=["documents", "metadatas"])
+            return {
+                "documents": results.get("documents", []),
+                "metadatas": results.get("metadatas", []),
+            }
+        except Exception as e:
+            print(f"Error getting all by vendor: {e}")
+            return {"documents": [], "metadatas": []}
+
+    def get_vendor_spend_totals(self) -> List[Dict[str, Any]]:
+        """Aggregate total_amount across all invoice chunks grouped by vendor_name."""
+        try:
+            data = self.collection.get(include=["metadatas"])
+            totals: Dict[str, float] = {}
+            invoice_counts: Dict[str, int] = {}
+            all_vendors: set[str] = set()
+            for meta in data.get("metadatas", []):
+                if not isinstance(meta, dict):
+                    continue
+                vn = meta.get("vendor_name")
+                if vn:
+                    all_vendors.add(vn)
+                if meta.get("type") != "invoice":
+                    continue
+                vendor = meta.get("vendor_name") or "Unknown"
+                raw_amount = meta.get("total_amount")
+                amount = 0.0
+                def _parse_amount(val):
+                    if val is None:
+                        return 0.0
+                    s = str(val).strip()
+                    import re
+                    s = re.sub(r"[₹$,]", "", s)
+                    s = re.sub(r"[^0-9.]", "", s)
+                    try:
+                        return float(s) if s else 0.0
+                    except Exception:
+                        return 0.0
+                amount = _parse_amount(raw_amount)
+                # Fallback: sum line item amounts if invoice total missing/zero
+                if amount == 0.0 and meta.get("line_items"):
+                    import json
+                    try:
+                        line_items = meta.get("line_items")
+                        if isinstance(line_items, str):
+                            line_items = json.loads(line_items)
+                        li_total = 0.0
+                        if isinstance(line_items, list):
+                            for li in line_items:
+                                li_total += _parse_amount(li.get("amount"))
+                        if li_total > 0:
+                            amount = li_total
+                    except Exception:
+                        pass
+                totals[vendor] = totals.get(vendor, 0.0) + amount
+                invoice_counts[vendor] = invoice_counts.get(vendor, 0) + 1
+            ranking = [
+                {
+                    "vendor_name": v,
+                    "total_spend": totals[v],
+                    "invoice_count": invoice_counts.get(v, 0),
+                }
+                for v in totals.keys()
+            ]
+            # Add vendors with zero spend (no invoices indexed yet)
+            zero_vendors = [v for v in all_vendors if v not in totals]
+            for zv in zero_vendors:
+                ranking.append({"vendor_name": zv, "total_spend": 0.0, "invoice_count": 0})
+            ranking.sort(key=lambda x: x["total_spend"], reverse=True)
+            return ranking
+        except Exception as e:
+            print(f"Error computing vendor spend totals: {e}")
             return []
