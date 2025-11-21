@@ -20,7 +20,7 @@ def login():
     auth_url = google_auth_service.get_authorization_url()
     return jsonify({"auth_url": auth_url})
 
-@auth_bp.route("/oauth2callback")
+@auth_bp.route("/auth/callback")
 def callback():
     code = request.args.get("code")
     credentials = google_auth_service.exchange_code_for_token(code)

@@ -1,5 +1,3 @@
-<img src="https://github.com/user-attachments/assets/43a9dc8d-88d8-438b-a573-ce9fb1d4adae" width="90%" alt="VendorIQ.AI Banner"/>
-
 # 📁 VendorIQ.AI  
 
 ### 🤖 AI-Powered Invoice Automation Platform for SMBs
@@ -183,7 +181,7 @@ Closes #<issue_number>
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/auth/login` | GET | Get Google OAuth authorization URL |
-| `/oauth2callback` | GET | Google OAuth callback handler |
+| `/auth/callback` | GET | Google OAuth callback handler |
 | `/login` | POST | Email/password login |
 | `/register` | POST | Create new user account |
 | `/auth/refresh` | POST | Refresh JWT access token |

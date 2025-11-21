@@ -86,7 +86,7 @@ Example:
 FRONTEND_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=xxx
-GOOGLE_REDIRECT_URI=http://localhost:4001/oauth2callback
+GOOGLE_REDIRECT_URI=http://localhost:4001/auth/callback
 SECRET_KEY=change_me
 JWT_SECRET=change_me_jwt
 JWT_ALGORITHM=HS256
@@ -116,7 +116,7 @@ http://localhost:4001/docs
 |--------|------------------|-----------------------------------------|
 | GET    | /                | Health check                            |
 | GET    | /auth/login      | Generate Google OAuth2 consent URL      |
-| GET    | /oauth2callback  | Handle Google OAuth2 callback           |
+| GET    | /auth/callback   | Handle Google OAuth2 callback           |
 | POST   | /register        | Register new user                       |
 | POST   | /login           | Login with email & password             |
 | POST   | /auth/refresh    | Refresh access token                    |

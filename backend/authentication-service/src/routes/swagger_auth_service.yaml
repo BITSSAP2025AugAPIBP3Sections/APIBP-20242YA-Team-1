@@ -94,7 +94,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /oauth2callback:
+  /auth/callback:
     get:
       summary: Handle Google OAuth2 Callback
       description: Exchanges authorization code for tokens, verifies them, sets httpOnly cookies, and redirects to frontend.
