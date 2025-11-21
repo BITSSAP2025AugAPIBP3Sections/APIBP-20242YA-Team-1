@@ -15,7 +15,7 @@ auth_bp = Blueprint("auth_bp", __name__)
 google_auth_service = GoogleAuthService()
 user_auth_service = UserAuthService()
 
-@auth_bp.route("/auth/login", methods=["GET"])
+@auth_bp.route("/api/v1/auth/google/login", methods=["GET"])
 def login():
     auth_url = google_auth_service.get_authorization_url()
     return jsonify({"auth_url": auth_url})
@@ -62,14 +62,14 @@ def callback():
     return response
 
 
-@auth_bp.route("/auth/logout", methods=["POST"])
+@auth_bp.route("/api/v1/auth/logout", methods=["POST"])
 def logout():
     response = jsonify({"message": "Logged out successfully"})
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/api/v1/auth/login", methods=["POST"])
 def login_email():
     data = request.get_json() or {}
     email = data.get("email")
@@ -79,7 +79,6 @@ def login_email():
     if not success:
         return jsonify({"error": auth_response}), 400
 
-    # authenticate now returns the token payload directly (no nested 'tokens' key)
     tokens = auth_response  # contains access_token, refresh_token, token_type, user
     response = jsonify({
         "user": {
@@ -108,7 +107,7 @@ def login_email():
     return response, 200
 
 
-@auth_bp.route("/register", methods=["POST"])
+@auth_bp.route("/api/v1/auth/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
     email = data.get("email")
@@ -136,21 +135,19 @@ def register():
     return response, 201
 
 
-@auth_bp.route("/delete-user", methods=["DELETE"]) 
-def delete_user():
-    data = request.get_json() or {}
-    user_id = data.get("user_id")
+@auth_bp.route("/api/v1/users/<user_id>", methods=["DELETE"]) 
+def delete_user(user_id):
     success, message = user_auth_service.delete_user(user_id)
     if success:
         return jsonify({"message": message}), 200
     return jsonify({"error": message}), 404
 
-@auth_bp.route("/users", methods=["GET"])
+@auth_bp.route("/api/v1/users", methods=["GET"])
 def list_users():
     users = user_auth_service.list_users()
     return jsonify({"users": users}), 200
 
-@auth_bp.route("/auth/refresh", methods=["POST"])
+@auth_bp.route("/api/v1/auth/refresh", methods=["POST"])
 def refresh():
     refresh_token = (
         request.cookies.get("refresh_token")
@@ -174,7 +171,7 @@ def refresh():
     )
     return response, 200
 
-@auth_bp.route("/auth/me", methods=["GET"])
+@auth_bp.route("/api/v1/auth/me", methods=["GET"])
 def get_current_user():
     access_token = request.cookies.get("access_token")
     if not access_token:
@@ -184,7 +181,6 @@ def get_current_user():
     if not valid or payload.get("type") != "access":
         return jsonify({"isAuthenticated": False, "user": None}), 200
 
-    # MongoDB IDs are strings (ObjectId hex); no integer casting
     user_id = payload.get("sub")
     if not user_id:
         return jsonify({"isAuthenticated": False, "user": None}), 200

@@ -180,15 +180,15 @@ Closes #<issue_number>
 ### 🔐 Authentication Service (Port 4001)
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/auth/login` | GET | Get Google OAuth authorization URL |
-| `/auth/callback` | GET | Google OAuth callback handler |
-| `/login` | POST | Email/password login |
-| `/register` | POST | Create new user account |
-| `/auth/refresh` | POST | Refresh JWT access token |
-| `/auth/me` | GET | Get current user profile |
-| `/auth/logout` | POST | Logout and clear cookies |
-| `/users` | GET | List all users (admin) |
-| `/delete-user` | DELETE | Delete user account |
+| `/api/v1/auth/google/login` | GET | Get Google OAuth authorization URL |
+| `/auth/callback` | GET | Google OAuth callback handler (unversioned) |
+| `/api/v1/auth/login` | POST | Email/password login |
+| `/api/v1/auth/register` | POST | Create new user account |
+| `/api/v1/auth/refresh` | POST | Refresh JWT access token |
+| `/api/v1/auth/me` | GET | Get current user profile |
+| `/api/v1/auth/logout` | POST | Logout and clear cookies |
+| `/api/v1/users` | GET | List all users (admin) |
+| `/api/v1/users/{id}` | DELETE | Delete user account |
 
 ### 📧 Email & Storage Service (Port 4002)
 | Endpoint | Method | Description |

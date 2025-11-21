@@ -1,20 +1,20 @@
 swagger: "2.0"
 info:
   title: Google & Email/Password Authentication Service API
-  version: 1.2.0
+  version: 1.2.1
   description: >
     This service handles Google OAuth2 authentication flow and simple email/password registration & login.
 host: localhost:4001
-basePath: /
+basePath: /api/v1
 schemes:
   - http
 
 servers:
-  - url: http://localhost:4001
+  - url: http://localhost:4001/api/v1
     description: Local development server
     
 paths:
-  /auth/login:
+  /api/v1/auth/google/login:
     get:
       summary: Generate Google OAuth2 Authorization URL
       description: Returns the Google OAuth2 consent screen URL where the user will log in.
@@ -29,7 +29,7 @@ paths:
               auth_url:
                 type: string
 
-  /login:
+  /ap1/v1/auth/login:
     post:
       summary: Login with email and password
       tags:
@@ -60,7 +60,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /register:
+  /api/v1/auth/register:
     post:
       summary: Register a new user with email, password, and username
       tags:
@@ -94,27 +94,10 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /auth/callback:
-    get:
-      summary: Handle Google OAuth2 Callback
-      description: Exchanges authorization code for tokens, verifies them, sets httpOnly cookies, and redirects to frontend.
-      tags:
-        - Google OAuth
-      parameters:
-        - name: code
-          in: query
-          required: true
-          type: string
-          description: Authorization code returned by Google
-      responses:
-        "302":
-          description: "Redirect to frontend dashboard on successful authentication (cookies set: access_token, refresh_token)"
-        "400":
-          description: Invalid credentials or token
-          schema:
-            $ref: '#/definitions/ErrorResponse'
+# IMPORTANT: Callback remains unversioned (basePath does NOT apply). Document separately.
+# The live endpoint is /auth/callback outside /api/v1 for OAuth redirect URI stability.
 
-  /auth/logout:
+  /api/v1/auth/logout:
     post:
       summary: Log out the authenticated user
       description: Removes auth cookies (access_token, refresh_token) and returns a message.
@@ -126,26 +109,18 @@ paths:
           schema:
             $ref: '#/definitions/MessageResponse'
 
-  /delete-user:
+  /api/v1//users/{user_id}:
     delete:
       summary: Delete a user by ID
       description: Permanently removes a user from the database.
       tags:
-        - Email Auth
-      consumes:
-        - application/json
+        - Users
       parameters:
-        - in: body
-          name: user
+        - name: user_id
+          in: path
           required: true
-          schema:
-            type: object
-            properties:
-              user_id:
-                type: integer
-                example: 3
-            required:
-              - user_id
+          type: string
+          description: User ID
       responses:
         "200":
           description: User deleted
@@ -156,24 +131,12 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /:
-    get:
-      summary: Health Check
-      description: Check if the Authentication Service is running.
-      tags:
-        - Utility
-      responses:
-        "200":
-          description: Service running successfully
-          schema:
-            $ref: '#/definitions/MessageResponse'
-
-  /users:
+  /api/v1/users:
     get:
       summary: List all users
       description: Returns an array of all registered users.
       tags:
-        - Utility
+        - Users
       responses:
         "200":
           description: Users fetched successfully
@@ -185,7 +148,7 @@ paths:
                 items:
                   $ref: '#/definitions/User'
 
-  /auth/refresh:
+  /ap1/v1/auth/refresh:
     post:
       summary: Refresh access token
       description: Accepts a refresh token from cookie or request body and returns new access & refresh tokens.
@@ -216,13 +179,52 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
+  /api/v1/auth/me:
+    get:
+      summary: Get logged-in user
+      description: Returns authenticated user info if access token is valid.
+      tags:
+        - Utility
+      responses:
+        "200":
+          description: Auth state
+          schema:
+            type: object
+            properties:
+              isAuthenticated:
+                type: boolean
+              user:
+                $ref: '#/definitions/User'
+
+# Unversioned external OAuth path reference
+x-unversioned-paths:
+  /auth/callback:
+    get:
+      summary: Handle Google OAuth2 Callback (UNVERSIONED)
+      description: Exchanges authorization code for tokens, verifies them, sets httpOnly cookies, and redirects to frontend.
+      tags:
+        - Google OAuth
+      parameters:
+        - name: code
+          in: query
+          required: true
+          type: string
+          description: Authorization code returned by Google
+      responses:
+        "302":
+          description: "Redirect to frontend dashboard on successful authentication (cookies set: access_token, refresh_token)"
+        "400":
+          description: Invalid credentials or token
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
 definitions:
   User:
     type: object
     properties:
       id:
-        type: integer
-        example: 1
+        type: string
+        example: 677e0bf8c5e4e3e5f8a1d234
       email:
         type: string
         example: user@example.com
