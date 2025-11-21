@@ -2,16 +2,21 @@ import os
 import jwt
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+load_dotenv()
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+print("Hello -- ", JWT_SECRET, JWT_ALGORITHM)
 
-PUBLIC_MATCHES = ["/", "/docs", "/redoc", "/openapi.json"]
+# Explicit public paths (exact match) and prefixes
+PUBLIC_PATHS = {"/", "/api/v1/api/health"}  # health due to double prefix (/api + /api/v1)
+PUBLIC_PREFIXES = ("/docs", "/redoc", "/openapi.json")
 
 async def jwt_http_middleware(request: Request, call_next):
     path = request.url.path
-    # Allow health + public docs/root
-    if any(path.startswith(p) for p in PUBLIC_MATCHES) or "health" in path:
+    # Allow root, health, and docs assets only
+    if path in PUBLIC_PATHS or any(path.startswith(pref) for pref in PUBLIC_PREFIXES):
         return await call_next(request)
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
@@ -23,9 +28,9 @@ async def jwt_http_middleware(request: Request, call_next):
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         request.state.user = payload
     except jwt.ExpiredSignatureError:
-         return JSONResponse(status_code=401, content={"detail": "Token expired"})
+        return JSONResponse(status_code=401, content={"detail": "Token expired"})
     except jwt.InvalidTokenError as e:
-         return JSONResponse(status_code=401, content={"detail": "Invalid token", "error": str(e)})
+        return JSONResponse(status_code=401, content={"detail": "Invalid token", "error": str(e)})
     return await call_next(request)
 
 
