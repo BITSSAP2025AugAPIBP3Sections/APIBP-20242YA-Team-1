@@ -14,10 +14,15 @@ const swaggerOptions = {
         "API documentation for Google Sheets Analytics Service – handles analytics data updates and communication with Google Sheets.",
     },
     servers: [
-      {
-        url: "http://localhost:4004",
-      },
-    ],
+    {
+      url: "http://localhost:4002",
+      description: "Local development server",
+    },
+    {
+      url: "https://deploy-email-service-1-1-1.onreder.com",
+      description: "Production server",
+    },
+  ],
   },
   apis: ["./src/routes/*.js", "./src/controllers/*.js"], // path to your API doc comments
 };
