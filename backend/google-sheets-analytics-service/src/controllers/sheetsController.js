@@ -1,8 +1,23 @@
-import { appendInvoiceData, exportSheetData } from "../services/sheetsService.js";
-import { fetchAnalyticsData } from "../services/analyticsService.js";
+import { appendInvoiceData } from "../services/sheetsService.js";
+import { processDriveVendors } from "../services/driveService.js";
 
 export const updateSheet = async (req, res) => {
   try {
+    // 1️⃣ Drive Sync Trigger
+    if (req.body && req.body.fromDrive) {
+      console.log("Starting Drive sync...");
+
+      // No req.user anymore — credentials come from .env
+      const result = await processDriveVendors();
+
+      return res.status(200).json({
+        success: true,
+        message: "Drive sync completed successfully",
+        result
+      });
+    }
+
+    // 2️⃣ LOCAL JSON / FILE UPLOAD FLOW — unchanged
     let payload;
 
     if (req.file) {
@@ -15,17 +30,30 @@ export const updateSheet = async (req, res) => {
       console.log("JSON body received");
     } 
     else {
-      return res.status(400).json({ success: false, message: "No file or JSON data provided" });
+      return res.status(400).json({
+        success: false,
+        message: "No file or JSON data provided"
+      });
     }
 
     const result = await appendInvoiceData(payload);
-    res.status(201).json({ success: true, message: "Data stored successfully", result });
+    res.status(201).json({
+      success: true,
+      message: "Data stored successfully",
+      result
+    });
 
   } catch (err) {
     console.error("Error in updateSheet:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
   }
 };
+
+// -------------------------------------------------------
 
 export const getAnalytics = async (req, res) => {
   try {
@@ -44,6 +72,8 @@ export const getAnalytics = async (req, res) => {
     });
   }
 };
+
+// -------------------------------------------------------
 
 export const exportData = async (req, res) => {
   try {

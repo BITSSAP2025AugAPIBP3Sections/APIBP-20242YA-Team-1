@@ -128,3 +128,23 @@ export const exportSheetData = async (format = "csv") => {
     throw error;
   }
 };
+// near top or bottom of src/services/sheetsService.js
+export function buildRowsFromInvoices(invoices) {
+  const rows = [];
+  invoices.forEach((invoice) => {
+    if (!invoice.line_items || !Array.isArray(invoice.line_items)) return;
+    invoice.line_items.forEach((item) => {
+      rows.push([
+        invoice.vendor_name || "",
+        invoice.invoice_number || "",
+        invoice.invoice_date || "",
+        invoice.total_amount || "",
+        item.item_description || "",
+        item.quantity || "",
+        item.unit_price || "",
+        item.amount || ""
+      ]);
+    });
+  });
+  return rows;
+}
