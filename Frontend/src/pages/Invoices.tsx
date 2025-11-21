@@ -630,7 +630,7 @@ const Invoices = () => {
       </div>
 
       {/* Configuration Card */}
-      {!searchParams.get("vendorId") && (
+      {/* {!searchParams.get("vendorId") && (
         <Card>
           <CardHeader>
             <CardTitle>Configuration</CardTitle>
@@ -664,7 +664,7 @@ const Invoices = () => {
             </Button>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {/* Vendor Info Badge */}
       {vendorName && (
@@ -710,7 +710,7 @@ const Invoices = () => {
           <CardContent className="flex flex-col items-center justify-center h-48 text-center">
             {invoices.length === 0 ? (
               <>
-                <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                <AlertCircle className="h-12 w-12 text-muted-foreground m-4" />
                 <h3 className="text-lg font-semibold mb-2">No Invoices Available</h3>
                 <p className="text-sm text-muted-foreground max-w-md mb-3">
                   {vendorId 

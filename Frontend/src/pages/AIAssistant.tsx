@@ -401,7 +401,7 @@ const AIAssistant: React.FC = () => {
             {vendors.length > 1 && <option value="ALL">All Vendors</option>}
             {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
           </select>
-          <div className="hidden sm:block text-[10px] text-muted-foreground max-w-[150px] truncate" title={vendorStatusMsg}>{vendorStatusMsg}</div>
+          {/* <div className="hidden sm:block text-[10px] text-muted-foreground max-w-[150px] truncate" title={vendorStatusMsg}>{vendorStatusMsg}</div> */}
           {vendorError && <div className="text-[10px] text-red-500" title={vendorError}>{vendorError}</div>}
           {!vendorError && !vendors.length && hasGoogleConnection && USER_ID && (
             <div className="text-[10px] text-yellow-600" title="No vendor folders discovered">No vendors found</div>
