@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import chat
 import uvicorn
 from app.routes.graphql import graphql_router
-from app.middleware.jwt_auth import jwt_http_middleware
 from fastapi.openapi.utils import get_openapi
 
 
@@ -20,9 +19,6 @@ app = FastAPI(
     ),
     version="1.1.0",
 )
-
-# Register JWT middleware
-app.middleware("http")(jwt_http_middleware)
 
 app.add_middleware(
     CORSMiddleware,
