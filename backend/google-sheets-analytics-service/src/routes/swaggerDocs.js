@@ -19,7 +19,7 @@ const swaggerOptions = {
       description: "Local development server",
     },
     {
-      url: "https://deploy-email-service-1-1-1.onreder.com",
+      url: "https://deploy-email-service-1-1-1.onrender.com",
       description: "Production server",
     },
   ],
