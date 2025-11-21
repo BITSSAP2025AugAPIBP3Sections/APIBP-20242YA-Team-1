@@ -115,7 +115,7 @@ const Vendors = () => {
       </div>
 
       {/* Configuration Card */}
-      <Card>
+      {/* <Card className="hidden">
         <CardHeader>
           <CardTitle>Configuration</CardTitle>
           <CardDescription>Set your user ID to fetch vendor folders</CardDescription>
@@ -140,7 +140,7 @@ const Vendors = () => {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Search Bar */}
       {vendors.length > 0 && (
@@ -166,11 +166,11 @@ const Vendors = () => {
         </Card>
       ) : filteredVendors.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center h-48 text-center">
+          <CardContent className="flex flex-col items-center justify-center h-48 text-center m-4">
             {vendors.length === 0 ? (
               <>
                 <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Vendors Yet</h3>
+                <h3 className="text-xl font-semibold mb-2">No Vendors Yet</h3>
                 <p className="text-sm text-muted-foreground max-w-md mb-3">
                   You haven't synced any emails yet. Vendor folders are automatically created when you fetch emails with invoice attachments.
                 </p>

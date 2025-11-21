@@ -4,7 +4,7 @@ export const swaggerDocs = {
     title: "Email & Storage Service API",
     version: "1.0.0",
     description:
-      "# Email & Storage Service API\n\nAutomated invoice management service that fetches email attachments from Gmail and organizes files in Google Drive.",
+      "# Email & Storage Service API\n\nAutomated invoice management service that fetches email attachments from Gmail and organizes files in Google Drive.\n\n## Authentication\nMost /api/v1/* endpoints require a JWT access token obtained from the authentication-service.\nInclude header: `Authorization: Bearer <access_token>`\n\nPublic endpoints: `/`, `/api-info`, `/health`, `/auth/google`, `/auth/google/callback`.\n",
     contact: {
       name: "API Support Team",
       email: "support@example.com",
@@ -334,6 +334,7 @@ export const swaggerDocs = {
             }
           },
         },
+        security: [{ bearerAuth: [] }],
       },
     },
     "/api/v1/drive/users/{userId}/vendors": {
@@ -415,6 +416,7 @@ export const swaggerDocs = {
             }
           },
         },
+        security: [{ bearerAuth: [] }],
       },
     },
     "/api/v1/drive/users/{userId}/vendors/{vendorId}/invoices": {
@@ -504,6 +506,7 @@ export const swaggerDocs = {
             }
           },
         },
+        security: [{ bearerAuth: [] }],
       },
     },
     "/api/v1/users/{userId}/sync-status": {
@@ -563,6 +566,7 @@ export const swaggerDocs = {
             }
           },
         },
+        security: [{ bearerAuth: [] }],
       },
       delete: {
         summary: "Reset user's email sync status",
@@ -630,10 +634,19 @@ export const swaggerDocs = {
             }
           },
         },
+        security: [{ bearerAuth: [] }],
       },
     },
   },
   components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "Provide the access_token issued by authentication-service. Example: 'Bearer eyJhbGciOiJI...'"
+      }
+    },
     schemas: {
       OptionsResponse: {
         type: "object",

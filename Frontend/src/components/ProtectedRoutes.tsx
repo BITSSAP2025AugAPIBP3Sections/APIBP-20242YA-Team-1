@@ -5,7 +5,6 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useResizableSidebar } from "@/hooks/use-resizable-sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffect } from "react";
-import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import EmailSync from "@/pages/EmailSync";
 import ScheduledJobs from "@/pages/ScheduledJobs";
@@ -92,12 +91,12 @@ const ProtectedLayout = ({
           <div className="max-w-9xl mx-auto p-2">
             <Routes>
               {/* application supported routes */}
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Settings />} />
               <Route path="/email-sync" element={<EmailSync />} />
               <Route path="/scheduled-jobs" element={<ScheduledJobs />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/invoices" element={<Invoices />} />
-              <Route path="/analytics" element={<Navigate to="/" />} />
+              <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/ai-assistant" element={<AIAssistant />} />
 

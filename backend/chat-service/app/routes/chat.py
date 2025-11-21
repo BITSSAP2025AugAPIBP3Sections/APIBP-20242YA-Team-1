@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional
 from app.core.orchestrator import VendorKnowledgeOrchestrator
+from app.middleware.jwt_auth import decode_token_for_health
 
 # Unified router (no extra prefix to keep paths explicit)
 router = APIRouter(tags=["VendorIQ RAG Service"])
@@ -117,17 +118,19 @@ async def delete_context(orchestrator: VendorKnowledgeOrchestrator = Depends(get
         raise HTTPException(status_code=500, detail=f"Failed to delete context: {str(e)}")
 
 # Health
-@router.get("/health", summary="Health Check", description="Service + vector DB status")
-async def health_check(orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator)):
+@router.get("/health", summary="Health Check", description="Service + vector DB status + JWT auth status (non-blocking)")
+async def health_check(request: Request, orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator)):
     try:
         stats = orchestrator.get_system_stats()
+        auth_status = decode_token_for_health(request.headers.get("Authorization"))
         return {
             "status": "ok" if stats.get("success") else "error",
             "service": "chat-rag-service",
             "vector": stats.get("stats", {}),
+            "auth": auth_status,
         }
     except Exception as e:
-        return {"status": "error", "service": "chat-rag-service", "error": str(e)}
+        return {"status": "error", "service": "chat-rag-service", "error": str(e), "auth": decode_token_for_health(request.headers.get("Authorization"))}
 
 @router.get("/vendor/summary", summary="Vendor Summary", description="Aggregated stats and invoice excerpts for a single vendor from indexed knowledge chunks")
 async def vendor_summary(
