@@ -5,49 +5,58 @@ from app.core.orchestrator import VendorKnowledgeOrchestrator
 # Unified router (no extra prefix to keep paths explicit)
 router = APIRouter(tags=["VendorIQ RAG Service"])
 
-# Provide a fresh orchestrator per request (avoid shared mutable state)
+# Use a singleton orchestrator to avoid re-loading Gemini model every request
+_GLOBAL_ORCHESTRATOR: VendorKnowledgeOrchestrator | None = None
+
 def get_orchestrator():
-    return VendorKnowledgeOrchestrator()
+    global _GLOBAL_ORCHESTRATOR
+    if _GLOBAL_ORCHESTRATOR is None:
+        _GLOBAL_ORCHESTRATOR = VendorKnowledgeOrchestrator()
+    return _GLOBAL_ORCHESTRATOR
 
 # Load / build knowledge base (cron/internal use)
 @router.post("/knowledge/load", summary="Load & Index Vendor Knowledge", description="Load vendor data (local sample or remote Drive master.json for a user), generate embeddings, store in vector DB")
 async def load_vendor_knowledge(
     incremental: bool = Query(False, description="Only index new chunks if true"),
-    userId: str | None = Query(None, description="If provided, load remote master.json records for this user from Drive"),
+    userId: str | None = Query(None, description="User whose Drive vendor master.json files will be loaded if refreshToken provided"),
+    refreshToken: str | None = Query(None, description="Google OAuth refresh token for Drive access to vendor master.json files"),
     orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
 ):
     try:
-        result = orchestrator.process_vendor_data(incremental=incremental, user_id=userId)
+        result = orchestrator.process_vendor_data(incremental=incremental, user_id=userId, refresh_token=refreshToken)
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])
-        # Invalidate analytics snapshots on full reindex (non-incremental) so fresh aggregation occurs next request
-        if not incremental and userId:
-            import os, httpx
-            base_url = os.getenv("EMAIL_STORAGE_SERVICE_URL", "http://localhost:4002/api/v1")
-            delete_url = f"{base_url}/analytics/snapshots"
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    await client.delete(delete_url, params={"userId": userId})
-            except Exception as e:
-                print(f"Analytics snapshot invalidation failed: {e}")
-
-        # Immediately compute and persist fresh analytics snapshots after indexing
-        if userId:
-            import os, httpx
-            base_url = os.getenv("EMAIL_STORAGE_SERVICE_URL", "http://localhost:4002/api/v1")
-            persist_url = f"{base_url}/analytics/snapshots"
-            periods = ["month", "quarter", "year", "all"]
-            for p in periods:
-                try:
-                    analytics = orchestrator.get_analytics(period=p)
-                    async with httpx.AsyncClient(timeout=10.0) as client:
-                        resp = await client.post(persist_url, json={"userId": userId, "period": p, "data": analytics})
-                        print(f"Persist snapshot period={p} status={resp.status_code} successField={analytics.get('success')} message={analytics.get('message')}")
-                except Exception as e:
-                    print(f"Persist analytics snapshot failed period={p}: {e}")
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Knowledge load failed: {str(e)}")
+
+# Direct ingest endpoint (OCR service pushes master data; avoids refreshToken usage here)
+from pydantic import BaseModel, Field
+class DirectVendorPayload(BaseModel):
+    vendorName: str = Field(..., description="Vendor name")
+    records: list = Field(default_factory=list, description="Array of invoice objects (master.json content)")
+
+class DirectKnowledgeIngest(BaseModel):
+    userId: str | None = Field(None, description="Optional user identifier (for logging)")
+    incremental: bool = Field(True, description="Skip existing chunks if true")
+    vendors: list[DirectVendorPayload] = Field(default_factory=list, description="List of vendor master arrays")
+
+@router.post("/knowledge/ingest", summary="Direct Master JSON Ingest", description="Index raw vendor master arrays pushed from OCR service (bypasses Drive fetch).")
+async def direct_ingest(payload: DirectKnowledgeIngest, orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator)):
+    try:
+        dataset = orchestrator.data_loader.from_raw_vendor_arrays([
+            {"vendorName": v.vendorName, "records": v.records} for v in payload.vendors
+        ])
+        result = orchestrator.process_direct_dataset(dataset, incremental=payload.incremental)
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("message", "Ingest failed"))
+        result["userId"] = payload.userId
+        result["vendorCount"] = len(payload.vendors)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Direct ingest failed: {e}")
 
 # Chat RAG endpoint 
 @router.get(
@@ -120,6 +129,21 @@ async def health_check(orchestrator: VendorKnowledgeOrchestrator = Depends(get_o
     except Exception as e:
         return {"status": "error", "service": "chat-rag-service", "error": str(e)}
 
+@router.get("/vendor/summary", summary="Vendor Summary", description="Aggregated stats and invoice excerpts for a single vendor from indexed knowledge chunks")
+async def vendor_summary(
+    vendor_name: str = Query(..., description="Vendor name to summarize"),
+    orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
+):
+    try:
+        result = orchestrator.get_vendor_summary(vendor_name)
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("message", "Vendor summary not found"))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Vendor summary failed: {e}")
+
 # OPTIONS endpoint to list all registered endpoints in the service
 @router.options(
     "/endpoints",
@@ -161,52 +185,18 @@ async def list_endpoints(request: Request):
     endpoints.sort(key=lambda x: x["path"])  # stable order
     return {"count": len(endpoints), "endpoints": endpoints}
 
-@router.get("/analytics", summary="Analytics Overview", description="Aggregated spend & trend analytics across all vendors (cached if available)")
+@router.get("/analytics", summary="Analytics Overview", description="Real-time spend & trend analytics across all vendors with live Gemini summary")
 async def analytics_overview(
     period: str = Query("year", description="Range: month | quarter | year | all"),
-    userId: Optional[str] = Query(None, description="User ID for per-user cached analytics"),
+    userId: Optional[str] = Query(None, description="Reserved for future per-user scoping (currently unused)"),
     orchestrator: VendorKnowledgeOrchestrator = Depends(get_orchestrator),
 ):
-    """Return cached analytics snapshot if fresh; otherwise compute and persist.
-    Caching is delegated to email-storage-service which stores snapshots per user+period.
-    """
-    import os, httpx
-    base_url = os.getenv("EMAIL_STORAGE_SERVICE_URL", "http://localhost:4002/api/v1")
-    ttl_minutes = int(os.getenv("ANALYTICS_SNAPSHOT_TTL_MINUTES", "60"))
-    # Attempt fetch of cached snapshot when userId provided
-    if userId:
-        snapshot_url = f"{base_url}/analytics/snapshots"
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(snapshot_url, params={"userId": userId, "period": period})
-            if resp.status_code == 200:
-                payload = resp.json()
-                if payload.get("cached") and not payload.get("stale"):
-                    # Return cached data directly, annotate response
-                    cached_data = payload.get("data", {})
-                    cached_data["cached"] = True
-                    cached_data["period"] = period
-                    cached_data["source"] = "snapshot"
-                    return cached_data
-        except Exception as e:
-            # Log and continue to compute fresh
-            print(f"Cached analytics fetch failed: {e}")
-
-    # Compute fresh analytics
+    """Always compute fresh analytics and generate a Gemini summary; no caching layer."""
     result = orchestrator.get_analytics(period=period)
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("message", "Analytics unavailable"))
-
-    # Persist snapshot asynchronously if userId provided
-    if userId:
-        persist_url = f"{base_url}/analytics/snapshots"
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(persist_url, json={"userId": userId, "period": period, "data": result})
-        except Exception as e:
-            print(f"Persist analytics snapshot failed: {e}")
-
     result["cached"] = False
     result["period"] = period
-    result["ttlMinutes"] = ttl_minutes
+    # Indicate live generation
+    result["source"] = "live"
     return result

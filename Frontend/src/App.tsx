@@ -19,7 +19,7 @@ const AppRoutes = () => {
   const { user } = useAuth();
   
   // For non-authenticated users, show routes without sidebar
-  if (user) {
+  if (!user) {
     return (
       <Routes>
         <Route path="/" element={<Home />} />

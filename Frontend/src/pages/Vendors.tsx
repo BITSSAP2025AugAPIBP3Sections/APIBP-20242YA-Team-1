@@ -57,7 +57,7 @@ const Vendors = () => {
       } else {
         toast({
           title: "⚠️ Unable to Load Vendors",
-          description: data.message || data.details || "Failed to fetch vendors from Google Drive. Please check your Google connection.",
+          description: "Failed to fetch vendors from Google Drive. Please check your Google connection.",
           variant: "destructive",
         });
       }
@@ -79,6 +79,14 @@ const Vendors = () => {
   const filteredVendors = vendors.filter(vendor =>
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  // Pagination for vendors (7 per page)
+  const VENDOR_PAGE_SIZE = 7;
+  const [vendorPage, setVendorPage] = useState(1);
+  const vendorTotalPages = Math.max(1, Math.ceil(filteredVendors.length / VENDOR_PAGE_SIZE));
+  const paginatedVendors = filteredVendors.slice((vendorPage - 1) * VENDOR_PAGE_SIZE, vendorPage * VENDOR_PAGE_SIZE);
+  useEffect(() => {
+    if (vendorPage > vendorTotalPages) setVendorPage(1);
+  }, [filteredVendors.length, vendorTotalPages, vendorPage]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -143,9 +151,6 @@ const Vendors = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-sm"
           />
-          <span className="text-sm text-muted-foreground">
-            {filteredVendors.length} of {vendors.length} vendors
-          </span>
         </div>
       )}
 
@@ -188,66 +193,73 @@ const Vendors = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredVendors.map((vendor, index) => (
-            <Card
-              key={vendor.id}
-              className="hover:shadow-lg transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4"
-              style={{ animationDelay: `${index * 50}ms` }}
-              onClick={() => viewInvoices(vendor.id, vendor.name)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{vendor.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-xs">{formatDate(vendor.createdTime)}</span>
-                      </CardDescription>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {paginatedVendors.map((vendor, index) => (
+              <Card
+                key={vendor.id}
+                className="hover:shadow-lg transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDelay: `${index * 50}ms` }}
+                onClick={() => viewInvoices(vendor.id, vendor.name)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{vendor.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-1 mt-1">
+                          <Calendar className="h-3 w-3" />
+                          <span className="text-xs">{formatDate(vendor.createdTime)}</span>
+                        </CardDescription>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <Folder className="h-4 w-4" />
-                  <span className="font-mono text-xs truncate">{vendor.id}</span>
-                </div>
-                <Button 
-                  className="w-full" 
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    viewInvoices(vendor.id, vendor.name);
-                  }}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  View Invoices
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                    <Folder className="h-4 w-4" />
+                    <span className="font-mono text-xs truncate">{vendor.id}</span>
+                  </div>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      viewInvoices(vendor.id, vendor.name);
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Invoices
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {vendorTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={vendorPage === 1}
+                onClick={() => setVendorPage(p => Math.max(1, p - 1))}
+              >Prev</Button>
+              <span className="text-xs text-muted-foreground">Page {vendorPage} of {vendorTotalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={vendorPage === vendorTotalPages}
+                onClick={() => setVendorPage(p => Math.min(vendorTotalPages, p + 1))}
+              >Next</Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Summary Stats */}
-      {vendors.length > 0 && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                <span className="font-semibold">Total Vendors:</span>
-              </div>
-              <span className="text-2xl font-bold text-primary">{vendors.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Vendor total count removed per requirement */}
     </div>
   );
 };

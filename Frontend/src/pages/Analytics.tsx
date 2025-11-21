@@ -36,6 +36,7 @@ interface AnalyticsApiResponse {
   period?: string;
   message?: string;
   cached?: boolean;
+  llmSummary?: string;
 }
 
 export default function Analytics() {
@@ -177,10 +178,11 @@ export default function Analytics() {
           <p className="mt-2 text-muted-foreground">
             Deep insights into your spending patterns
           </p>
-          {analytics.cached && (
-            <span className="inline-block mt-2 px-2 py-1 text-xs rounded bg-emerald-100 text-emerald-700 border border-emerald-200" title="Data served from cached snapshot">
-              Cached Snapshot
-            </span>
+          {analytics.llmSummary && (
+            <div className="mt-3 text-sm leading-relaxed bg-muted/40 p-3 rounded border">
+              <strong className="block mb-1">AI Summary:</strong>
+              <span>{analytics.llmSummary}</span>
+            </div>
           )}
         </div>
         <Select value={period} onValueChange={(val) => setPeriod(val)}>

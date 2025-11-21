@@ -11,6 +11,9 @@ class VendorDataLoader:
         """Initialize the data loader with a directory path for vendor JSON files."""
         self.data_directory = data_directory
         self.vendors_data: List[Vendor] = []
+        self.google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+        self.google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        self.email_service_base = os.getenv("EMAIL_STORAGE_SERVICE_URL", "http://localhost:4002/api/v1")
         
     def load_vendor_json_files(self) -> VendorDataset:
         """Load all vendor JSON files from the specified directory."""
@@ -36,6 +39,109 @@ class VendorDataLoader:
         dataset = VendorDataset(vendors=vendors)
         self.vendors_data = vendors
         return dataset
+
+    def _build_drive_creds(self, refresh_token: str):
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        if not refresh_token or not self.google_client_id or not self.google_client_secret:
+            return None
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=self.google_client_id,
+            client_secret=self.google_client_secret,
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        )
+        try:
+            creds.refresh(Request())
+            return creds
+        except Exception as e:
+            print(f"Drive credential refresh failed: {e}")
+            return None
+
+    def load_remote_master(self, user_id: str, refresh_token: str) -> VendorDataset:
+        """Load vendor data directly from Drive master.json files per vendor folder.
+
+        Flow:
+        1. Use email-storage-service to list vendors for user.
+        2. For each vendor folder, query Drive for a file named master.json.
+        3. Download and parse the master.json (array of invoice objects).
+        4. Convert each into a Vendor model.
+        Falls back to empty dataset if anything fails silently per vendor.
+        """
+        import httpx
+        from googleapiclient.discovery import build
+        vendors: List[Vendor] = []
+        if not user_id or not refresh_token:
+            return VendorDataset(vendors=[])
+        creds = self._build_drive_creds(refresh_token)
+        if not creds:
+            return VendorDataset(vendors=[])
+        # List vendors via email-storage-service
+        vendor_list_url = f"{self.email_service_base}/drive/users/{user_id}/vendors"
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(vendor_list_url)
+            if resp.status_code != 200:
+                print(f"Vendor list fetch failed status={resp.status_code}")
+                return VendorDataset(vendors=[])
+            service = build("drive", "v3", credentials=creds)
+            for v in resp.json().get("vendors", []):
+                folder_id = v.get("id")
+                v_name = v.get("name") or "Unknown"
+                if not folder_id:
+                    continue
+                # Query for master.json inside folder
+                q = f"'{folder_id}' in parents and name='master.json' and trashed=false"
+                try:
+                    listing = service.files().list(q=q, fields="files(id,name)").execute()
+                    files = listing.get("files", [])
+                    if not files:
+                        continue
+                    file_id = files[0]["id"]
+                    # Download file content
+                    file_content_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+                    import requests
+                    headers = {"Authorization": f"Bearer {creds.token}"}
+                    r = requests.get(file_content_url, headers=headers, timeout=20)
+                    if r.status_code != 200:
+                        continue
+                    try:
+                        payload = r.json()
+                    except Exception:
+                        continue
+                    vendor_model = self._parse_vendor_data(payload)
+                    # Ensure vendor name consistent
+                    if vendor_model.vendor_name == "Unknown" and v_name:
+                        vendor_model.vendor_name = v_name
+                    vendors.append(vendor_model)
+                except Exception as e:
+                    print(f"Failed processing remote master for vendor folder {folder_id}: {e}")
+        except Exception as e:
+            print(f"Remote vendor listing failed: {e}")
+            return VendorDataset(vendors=[])
+        return VendorDataset(vendors=vendors)
+
+    def from_raw_vendor_arrays(self, vendors_payload: List[Dict[str, Any]]) -> VendorDataset:
+        """Build a VendorDataset from a list of vendor payload objects.
+
+        Expected shape per item:
+        {"vendorName": "Acme", "records": [ {...invoice...}, {...} ]}
+        Invoice records mirror the master.json array format produced by OCR service.
+        """
+        vendors: List[Vendor] = []
+        for item in vendors_payload:
+            records = item.get("records") or []
+            vendor_name_override = item.get("vendorName")
+            try:
+                vendor_model = self._parse_vendor_data(records)
+                if vendor_name_override and vendor_model.vendor_name == "Unknown":
+                    vendor_model.vendor_name = vendor_name_override
+                vendors.append(vendor_model)
+            except Exception as e:
+                print(f"Failed parsing raw vendor payload: {e}")
+        return VendorDataset(vendors=vendors)
     
     def _parse_vendor_data(self, data) -> Vendor:
         """Parse raw JSON data into Vendor model."""
@@ -51,13 +157,26 @@ class VendorDataLoader:
             
             invoices: List[Invoice] = []
             for invoice_data in data:
-                # Create Invoice from each array item
+                # Sanitize potentially None fields from OCR / Drive
+                inv_vendor = invoice_data.get('vendor_name', vendor_name) or vendor_name
+                invoice_number = invoice_data.get('invoice_number') or ''
+                invoice_date = invoice_data.get('invoice_date') or ''
+                total_amount = invoice_data.get('total_amount') or ''
+                raw_line_items = invoice_data.get('line_items') or []
+                # Ensure list of dicts
+                if not isinstance(raw_line_items, list):
+                    raw_line_items = []
+                line_items = []
+                for li in raw_line_items:
+                    if not isinstance(li, dict):
+                        continue
+                    line_items.append(li)
                 invoice = Invoice(
-                    vendor_name=invoice_data.get('vendor_name', vendor_name),
-                    invoice_number=invoice_data.get('invoice_number', ''),
-                    invoice_date=invoice_data.get('invoice_date', ''),
-                    total_amount=invoice_data.get('total_amount', ''),
-                    line_items=invoice_data.get('line_items', [])
+                    vendor_name=inv_vendor,
+                    invoice_number=str(invoice_number),
+                    invoice_date=str(invoice_date),
+                    total_amount=str(total_amount),
+                    line_items=line_items
                 )
                 invoices.append(invoice)
             
@@ -76,13 +195,20 @@ class VendorDataLoader:
             # Handle different possible structures in the JSON
             for key, value in data.items():
                 if key not in ['vendor_name', 'last_updated'] and isinstance(value, dict):
-                    # This is likely an invoice object
+                    inv_vendor = value.get('vendor_name', vendor_name) or vendor_name
+                    invoice_number = value.get('invoice_number') or ''
+                    invoice_date = value.get('invoice_date') or ''
+                    total_amount = value.get('total_amount') or ''
+                    raw_line_items = value.get('line_items') or []
+                    if not isinstance(raw_line_items, list):
+                        raw_line_items = []
+                    line_items = [li for li in raw_line_items if isinstance(li, dict)]
                     invoice = Invoice(
-                        vendor_name=value.get('vendor_name', vendor_name),
-                        invoice_number=value.get('invoice_number', ''),
-                        invoice_date=value.get('invoice_date', ''),
-                        total_amount=value.get('total_amount', ''),
-                        line_items=value.get('line_items', [])
+                        vendor_name=inv_vendor,
+                        invoice_number=str(invoice_number),
+                        invoice_date=str(invoice_date),
+                        total_amount=str(total_amount),
+                        line_items=line_items
                     )
                     invoices.append(invoice)
             

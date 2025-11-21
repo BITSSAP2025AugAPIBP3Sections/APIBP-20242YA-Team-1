@@ -22,6 +22,7 @@ OCR_PORT = int(os.getenv("OCR_PORT", "4003"))
 OCR_INTERNAL_BASE_URL = os.getenv("OCR_INTERNAL_BASE_URL", f"http://127.0.0.1:{OCR_PORT}")
 INVOICES_ROOT = os.getenv("INVOICES_JSON_FOLDER", "invoices_json")
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+CHAT_BASE = os.getenv("CHAT_SERVICE_BASE_URL", "http://localhost:4005/api/v1")
 
 
 def _ensure_folder(path: str) -> None:
@@ -99,6 +100,56 @@ def _load_master(path: str) -> List[Dict]:
 def _write_master(path: str, payload: List[Dict]) -> None:
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=4)
+
+
+async def _trigger_knowledge_indexing(user_id: str, incremental: bool = True, refresh_token: str | None = None) -> None:
+    """Fire-and-forget call to chat-service to (re)index vendor knowledge after new invoices processed.
+
+    The chat-service endpoint /knowledge/load will pull the remote master.json for the given user
+    (already uploaded to Drive) and update embeddings / analytics snapshots. We keep this lightweight
+    and non-blocking: failures are logged but do not raise.
+    """
+    if not user_id:
+        return
+    url = f"{CHAT_BASE}/knowledge/load"
+    params = {"userId": user_id, "incremental": incremental}
+    if refresh_token:
+        params["refreshToken"] = refresh_token
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(url, params=params)
+        if resp.status_code == 200:
+            logger.info("Triggered knowledge indexing", extra={"user_id": user_id, "incremental": incremental})
+        else:
+            logger.warning(
+                "Knowledge indexing trigger failed",
+                extra={"user_id": user_id, "status": resp.status_code, "body": resp.text[:300]},
+            )
+    except Exception as exc:
+        logger.error("Knowledge indexing trigger exception", exc_info=exc, extra={"user_id": user_id})
+
+
+async def _direct_ingest_vendor(user_id: str, vendor_name: str, records: List[Dict], incremental: bool) -> None:
+    """Push master records directly to chat-service ingest endpoint for immediate indexing."""
+    if not user_id or not vendor_name:
+        return
+    url = f"{CHAT_BASE}/knowledge/ingest"
+    payload = {
+        "userId": user_id,
+        "incremental": incremental,
+        "vendors": [
+            {"vendorName": vendor_name, "records": records}
+        ]
+    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(url, json=payload)
+        if resp.status_code == 200:
+            logger.info("Direct ingest success", extra={"vendor": vendor_name, "records": len(records)})
+        else:
+            logger.warning("Direct ingest failed", extra={"vendor": vendor_name, "status": resp.status_code, "body": resp.text[:300]})
+    except Exception as exc:
+        logger.error("Direct ingest exception", exc_info=exc, extra={"vendor": vendor_name})
 
 
 async def _upload_master_to_drive(folder_id: str, local_path: str, refresh_token: str) -> None:
@@ -218,16 +269,22 @@ async def process_vendor_invoices(
 
         processed.append(file_id)
 
+    # Always write master locally first (even if empty) then direct-ingest before Drive upload
+    _write_master(master_path, master_records)
+    try:
+        await _direct_ingest_vendor(user_id=user_id, vendor_name=vendor_name, records=master_records, incremental=bool(processed))
+    except Exception as exc:
+        logger.error("Direct ingest failed", exc_info=exc, extra={"vendor": vendor_name})
+
     if processed:
-        _write_master(master_path, master_records)
         await _upload_master_to_drive(invoice_folder_id, master_path, refresh_token)
         logger.info(
-            "Processed invoices",
+            "Processed invoices (+direct ingest)",
             extra={"vendor": vendor_name, "processed": len(processed), "skipped": len(skipped)},
         )
     else:
         logger.info(
-            "No new invoices to process",
+            "No new invoices to process (direct ingest sent existing master)",
             extra={"vendor": vendor_name, "skipped": len(skipped)},
         )
 
@@ -277,5 +334,8 @@ async def process_all_invoices(user_id: str, refresh_token: str) -> List[Dict]:
                 refresh_token=refresh_token,
             )
             results.append(summary)
+
+    # Full sync no remote indexing trigger; direct ingest handled per vendor.
+    logger.info("Full invoice sync complete (direct ingest path)", extra={"user_id": user_id, "vendors": len(results)})
 
     return results

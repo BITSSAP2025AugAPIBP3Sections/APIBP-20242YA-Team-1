@@ -33,25 +33,10 @@ export const saveToDrive = async (user, vendor, fileBuffer, fileName) => {
 
   const invoiceFolderId = await findOrCreateFolder(drive, "invoices", vendorFolderId);
 
-  const existingFile = await findFileInFolder(drive, invoiceFolderId, fileName);
-  if (existingFile) {
-    if (!existingFile.webViewLink || !existingFile.webContentLink) {
-      const links = await getFileLinks(drive, existingFile.id);
-      existingFile.webViewLink = links.webViewLink;
-      existingFile.webContentLink = links.webContentLink;
-    }
-    logger.info(`Skipped duplicate → ${vendorFolderName}/invoices/${fileName}`);
-    return {
-      fileId: existingFile.id,
-      skipped: true,
-      vendorFolderId,
-      vendorFolderName,
-      vendorDisplayName,
-      invoiceFolderId,
-      webViewLink: existingFile.webViewLink || null,
-      webContentLink: existingFile.webContentLink || null,
-    };
-  }
+  // Previous logic skipped upload solely on matching file name. This caused
+  // loss of distinct invoices sharing a filename (e.g., "invoice.pdf").
+  // Drive allows multiple files with the same name; we now always upload.
+  // If you prefer renaming duplicates, implement suffix logic here.
 
   const mimeType = getMimeType(fileName);
 
