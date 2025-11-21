@@ -355,7 +355,7 @@ const AIAssistant: React.FC = () => {
 
   return (
     // Full height below top navbar, ChatGPT-style
-    <div className="flex flex-col h-[calc(100dvh-64px)] bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-100px)] bg-background text-foreground overflow-hidden">
       {/* Header - fixed at top */}
       <header className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-background via-background to-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-none">
         <div className="flex items-center gap-3">
