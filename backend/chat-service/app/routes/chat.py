@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional
 from app.core.orchestrator import VendorKnowledgeOrchestrator
-from app.middleware.jwt_auth import decode_token_for_health
 
 # Unified router (no extra prefix to keep paths explicit)
 router = APIRouter(tags=["VendorIQ RAG Service"])

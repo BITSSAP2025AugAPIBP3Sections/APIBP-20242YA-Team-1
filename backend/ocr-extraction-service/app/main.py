@@ -7,7 +7,6 @@ from fastapi.openapi.utils import get_openapi
 from dotenv import load_dotenv
 
 from app.routes import base_routes, invoice_routes, pdf_ocr_routes, processing_routes, text_to_json
-from app.middleware.jwt_auth import jwt_http_middleware
 
 load_dotenv()
 
@@ -26,9 +25,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Invoice OCR Service", lifespan=lifespan)
-
-# Register JWT middleware
-app.middleware("http")(jwt_http_middleware)
 
 app.add_middleware(
     CORSMiddleware,
