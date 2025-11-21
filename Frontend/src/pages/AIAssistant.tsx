@@ -355,7 +355,7 @@ const AIAssistant: React.FC = () => {
 
   return (
     // Full height below top navbar, ChatGPT-style
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-64px)] bg-background text-foreground overflow-hidden">
       {/* Header - fixed at top */}
       <header className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-background via-background to-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-none">
         <div className="flex items-center gap-3">
@@ -372,12 +372,12 @@ const AIAssistant: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* UserId input removed; rely on env VITE_USER_ID or localStorage vendorIQ_userId */}
           {/* Vendor selection controls */}
-          <button
+          {/* <button
             type="button"
             onClick={loadVendors}
             className="text-xs rounded-md border px-2 py-1 bg-muted hover:bg-muted/70"
             disabled={!USER_ID || hasGoogleConnection === false}
-          >Refresh Vendors</button>
+          >Refresh Vendors</button> */}
           <select
             value={selectedVendorId}
             onFocus={() => { if (!vendors.length && !vendorError) loadVendors(); }}
@@ -427,7 +427,7 @@ const AIAssistant: React.FC = () => {
       )}
 
       {/* Search area with WhatsApp-style icon toggle */}
-      <div className="flex-none border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
+      <div className="flex-none bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
         {isSearchOpen ? (
           <div className="px-6 py-2 space-y-1">
             <div className="flex items-center gap-2">

@@ -87,7 +87,7 @@ const ProtectedLayout = ({
           />
             <ThemeToggle />
         </header>
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto ">
           <div className="max-w-9xl mx-auto p-2">
             <Routes>
               {/* application supported routes */}
@@ -96,7 +96,7 @@ const ProtectedLayout = ({
               <Route path="/scheduled-jobs" element={<ScheduledJobs />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/invoices" element={<Invoices />} />
-              <Route path="/analytics" element={<Navigate to="/" replace />} />
+              <Route path="/analytics" element={<Analytics/>} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/ai-assistant" element={<AIAssistant />} />
 
