@@ -89,7 +89,7 @@ const ProtectedLayout = ({
             <ThemeToggle />
         </header>
         <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto p-2">
+          <div className="max-w-9xl mx-auto p-2">
             <Routes>
               {/* application supported routes */}
               <Route path="/" element={<Dashboard />} />

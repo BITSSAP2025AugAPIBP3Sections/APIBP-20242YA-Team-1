@@ -7,3 +7,4 @@ python-dotenv==1.0.1
 google-api-python-client
 google-auth
 google-auth-oauthlib
+python-multipart
