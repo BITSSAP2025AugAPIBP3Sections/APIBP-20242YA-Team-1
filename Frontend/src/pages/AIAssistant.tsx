@@ -372,12 +372,12 @@ const AIAssistant: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* UserId input removed; rely on env VITE_USER_ID or localStorage vendorIQ_userId */}
           {/* Vendor selection controls */}
-          <button
+          {/* <button
             type="button"
             onClick={loadVendors}
             className="text-xs rounded-md border px-2 py-1 bg-muted hover:bg-muted/70"
             disabled={!USER_ID || hasGoogleConnection === false}
-          >Refresh Vendors</button>
+          >Refresh Vendors</button> */}
           <select
             value={selectedVendorId}
             onFocus={() => { if (!vendors.length && !vendorError) loadVendors(); }}

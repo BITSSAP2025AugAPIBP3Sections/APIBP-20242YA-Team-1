@@ -11,6 +11,8 @@ const AUTH_BASE_URL = (import.meta as any).env?.VITE_AUTH_SERVICE_URL || "http:/
 const CHAT_BASE_URL = (import.meta as any).env?.VITE_CHAT_BASE_URL
   || (import.meta as any).env?.VITE_CHAT_API_URL
   || "http://localhost:4005/api/v1";
+// Added: OCR service base URL for master/processing related endpoints (ensure bearer token)
+const OCR_BASE_URL = (import.meta as any).env?.VITE_OCR_SERVICE_URL || "http://localhost:4004/api/v1";
 
 // Type definitions
 export interface SyncStatus {
@@ -199,6 +201,27 @@ async function apiCall<T>(
   return { data, response };
 }
 
+// Dedicated helper for Chat service calls to ensure bearer token injection
+async function chatCall<T>(
+  endpoint: string,
+  options?: RequestInit & { skipAuth?: boolean; absolute?: boolean }
+): Promise<{ data: T; response: Response }> {
+  const url = options?.absolute ? endpoint : `${CHAT_BASE_URL}${endpoint}`;
+  let headers: Record<string, string> = { Accept: 'application/json' };
+  if (!options?.skipAuth) {
+    const token = await ensureAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(url, {
+    ...options,
+    headers: { ...headers, ...(options?.headers || {}) },
+    credentials: 'include', // still allow silent flows if cookies exist
+  });
+  let data: any = null;
+  try { data = await response.json(); } catch { /* ignore non-JSON */ }
+  return { data, response };
+}
+
 // ============================================================================
 // AUTH APIs
 // ============================================================================
@@ -351,26 +374,16 @@ export async function getChatAnswer(
   const qs = new URLSearchParams({ question });
   if (vendorName) qs.append("vendor_name", vendorName);
   if (userId) qs.append("userId", userId);
-  const url = `${CHAT_BASE_URL}/query?${qs.toString()}`;
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+  return chatCall<ChatAnswerResponse>(`/query?${qs.toString()}`);
 }
 
 export async function loadChatKnowledge(userId: string, incremental = true): Promise<{ data: any; response: Response }> {
-  const url = `${CHAT_BASE_URL}/knowledge/load?userId=${encodeURIComponent(userId)}&incremental=${incremental}`;
-  const response = await fetch(url, { method: "POST", headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+  return chatCall(`/knowledge/load?userId=${encodeURIComponent(userId)}&incremental=${incremental}`, { method: 'POST' });
 }
 
 export async function getChatVendorSummary(vendorName: string): Promise<{ data: ChatVendorSummary; response: Response }> {
-  const url = `${CHAT_BASE_URL}/vendor/summary?vendor_name=${encodeURIComponent(vendorName)}`;
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+  return chatCall<ChatVendorSummary>(`/vendor/summary?vendor_name=${encodeURIComponent(vendorName)}`);
 }
-
 
 // ============================================================================
 // EXPORTS
@@ -398,6 +411,13 @@ export const api = {
   // Invoice
   getInvoices,
   getVendorMaster,
+  
+  // Chat
+  getChatAnswer,
+  loadChatKnowledge,
+  getChatVendorSummary,
+  
+  // OCR (placeholder for future exports using ocrCall)
 };
 
 export default api;
