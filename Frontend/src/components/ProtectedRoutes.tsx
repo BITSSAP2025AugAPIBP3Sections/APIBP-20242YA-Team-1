@@ -91,19 +91,21 @@ const ProtectedLayout = ({
         <main className="flex-1 overflow-auto">
           <div className="max-w-7xl mx-auto p-2">
             <Routes>
+              {/* application supported routes */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/email-sync" element={<EmailSync />} />
               <Route path="/scheduled-jobs" element={<ScheduledJobs />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/invoices" element={<Invoices />} />
-              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/analytics" element={<Navigate to="/" />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/ai-assistant" element={<AIAssistant />} />
+
+              {/* Prevent unknown routes */}
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/register" element={<Navigate to="/" replace />} />
               <Route path="/reset" element={<Navigate to="/" replace />} />
-              <Route path="/analytics" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
-              <Route path="/ai-assistant" element={<AIAssistant />} />
 
             </Routes>
           </div>

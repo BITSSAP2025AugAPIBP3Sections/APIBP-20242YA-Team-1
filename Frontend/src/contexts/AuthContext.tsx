@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
+const API_BASE = `${AUTH_SERVICE_URL}/api/v1`; // versioned base
 
 // Simple user shape
 export interface User {
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const resp = await fetch(`${AUTH_SERVICE_URL}/auth/me`, {
+        const resp = await fetch(`${API_BASE}/auth/me`, {
           credentials: 'include', // sends cookies
         });
         const contentType = resp.headers.get('content-type') || '';
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${AUTH_SERVICE_URL}/register`, {
+      const resp = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -90,7 +91,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${AUTH_SERVICE_URL}/login`, {
+      const resp = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -119,7 +120,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
-      const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE}/auth/google/login`, {
         credentials: 'include',
       });
       const contentType = response.headers.get('content-type') || '';
@@ -144,7 +145,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async () => {
     try {
-      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include', 
       });

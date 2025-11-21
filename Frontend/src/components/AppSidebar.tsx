@@ -36,16 +36,6 @@ const mainMenuItems = [
     icon: BarChart3,
   },
   {
-    title: "Email Sync",
-    url: "/email-sync",
-    icon: Mail,
-  },
-  {
-    title: "Scheduled Jobs",
-    url: "/scheduled-jobs",
-    icon: Clock,
-  },
-  {
     title: "Invoices",
     url: "/invoices",
     icon: FileText,
@@ -67,6 +57,16 @@ const secondaryMenuItems = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Email Sync",
+    url: "/email-sync",
+    icon: Mail,
+  },
+  {
+    title: "Scheduled Jobs",
+    url: "/scheduled-jobs",
+    icon: Clock,
   },
 ];
 
