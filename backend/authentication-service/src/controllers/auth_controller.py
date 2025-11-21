@@ -74,7 +74,7 @@ def callback():
 
     user = user_auth_service.upsert_google_user(email, google_id, username)
     tokens = user_auth_service.generate_tokens_for_user(user)
-    
+    print("tokens: ",tokens)
     cookie_secure_env = os.getenv("COOKIE_SECURE", "True")  
     cookie_secure = cookie_secure_env.lower() in ("true", "1", "yes") 
 
@@ -286,39 +286,34 @@ def refresh():
 @auth_bp.route("/api/v1/auth/me", methods=["GET"])
 def get_current_user():
     """Endpoint: GET /api/v1/auth/me
-    Purpose: Retrieve current authenticated user's basic profile using access_token cookie.
-    Access: Requires valid access_token cookie; returns unauthenticated shape otherwise.
-    Consumers:
-      - Frontend session bootstrap.
-      - Health checks for auth state.
-    Returns: { isAuthenticated: bool, user: { id, username, email } | null }
-    Example:
-      curl -b "access_token=..." http://localhost:4001/api/v1/auth/me
-    Notes:
-      - Non-error response even if unauthenticated to simplify client logic.
-      - Extendable for roles/permissions later.
+    Purpose: Retrieve current authenticated user's profile using access_token (cookie or Authorization header).
+    Returns existing access_token (no new issuance).
+    Response shape: { isAuthenticated, user|null, access_token|null }
     """
+    # Try cookie first
     access_token = request.cookies.get("access_token")
+    # Fallback to Authorization header if cookie missing
     if not access_token:
-        return jsonify({"isAuthenticated": False, "user": None}), 200
-
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header[7:]
+    if not access_token:
+        return jsonify({"isAuthenticated": False, "user": None, "access_token": None}), 200
     valid, payload = user_auth_service.verify_token(access_token)
     if not valid or payload.get("type") != "access":
-        return jsonify({"isAuthenticated": False, "user": None}), 200
-
+        return jsonify({"isAuthenticated": False, "user": None, "access_token": None}), 200
     user_id = payload.get("sub")
     if not user_id:
-        return jsonify({"isAuthenticated": False, "user": None}), 200
-
+        return jsonify({"isAuthenticated": False, "user": None, "access_token": None}), 200
     user = user_auth_service.get_user_by_id(user_id)
     if not user:
-        return jsonify({"isAuthenticated": False, "user": None}), 200
-
+        return jsonify({"isAuthenticated": False, "user": None, "access_token": None}), 200
     return jsonify({
         "isAuthenticated": True,
         "user": {
             "id": user["id"],
             "username": user.get("username"),
             "email": user.get("email"),
-        }
+        },
+        "access_token": access_token
     }), 200
