@@ -14,7 +14,7 @@ info:
       2. For email/password: Register via POST /api/v1/auth/register then login via POST /api/v1/auth/login.
       3. Maintain session using httpOnly cookies automatically set by login endpoints.
       4. Refresh access tokens before expiry (~1h) using POST /api/v1/auth/refresh.
-      5. Use GET /api/v1/auth/me to obtain current session user in a non-errorizing way.
+      5. Use GET /api/v1/auth/me to obtain current session user without throwing errors.
    
     Security Highlights:
       - httpOnly + SameSite=Lax cookies
@@ -44,7 +44,7 @@ paths:
         - `auth_url` → URL that the frontend must redirect the user to.
 
         **Notes:**  
-        Google redirects back to `/oauth2callback` after authentication.
+        Google redirects back to `/auth/callback` after authentication.
       tags:
         - Google OAuth
       responses:
