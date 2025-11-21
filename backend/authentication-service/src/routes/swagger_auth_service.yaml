@@ -1,9 +1,25 @@
 swagger: "2.0"
 info:
   title: Google & Email/Password Authentication Service API
-  version: 1.2.1
+  version: 1.3.0
   description: >
-    This service handles Google OAuth2 authentication flow and simple email/password registration & login.
+    Authentication microservice providing:
+      - Google OAuth2 login flow (consent -> callback -> cookie issuance)
+      - Email/password registration & login
+      - Token refresh (rotating access tokens) via httpOnly cookies
+      - Basic user management (list, delete)
+    
+    Usage Notes:
+      1. For Google auth: Call GET /api/v1/auth/google/login, redirect user to returned auth_url, Google redirects back to /auth/callback.
+      2. For email/password: Register via POST /api/v1/auth/register then login via POST /api/v1/auth/login.
+      3. Maintain session using httpOnly cookies automatically set by login endpoints.
+      4. Refresh access tokens before expiry (~1h) using POST /api/v1/auth/refresh.
+      5. Use GET /api/v1/auth/me to obtain current session user in a non-errorizing way.
+   
+    Security Highlights:
+      - httpOnly + SameSite=Lax cookies
+      - Short-lived access token + long-lived refresh token
+      - CSRF risk reduced by SameSite and backend-only cookie reading.
 host: localhost:4001
 basePath: /api/v1
 schemes:
@@ -14,10 +30,21 @@ servers:
     description: Local development server
     
 paths:
-  /api/v1/auth/google/login:
+  /auth/google/login:
     get:
       summary: Generate Google OAuth2 Authorization URL
-      description: Returns the Google OAuth2 consent screen URL where the user will log in.
+      description: |
+        **Purpose:** Generate a Google OAuth2 authorization URL to initiate external authentication.
+
+        **Who Can Use:**  
+        - Frontend applications (React/Next.js web apps, mobile apps)  
+        - API Gateway performing redirection orchestration
+        
+        **Returns:**  
+        - `auth_url` → URL that the frontend must redirect the user to.
+
+        **Notes:**  
+        Google redirects back to `/oauth2callback` after authentication.
       tags:
         - Google OAuth
       responses:
@@ -29,9 +56,23 @@ paths:
               auth_url:
                 type: string
 
-  /ap1/v1/auth/login:
+  /auth/login:
     post:
       summary: Login with email and password
+      description: |
+        **Purpose:** Authenticate an end-user using email/password and establish a secure session.
+
+        **Who Can Use:**  
+        - Frontend applications collecting email/password during login  
+        - Mobile applications using native login screens
+
+        **Returns:**  
+        - User profile  
+        - httpOnly cookies (`access_token`, `refresh_token`) enabling session-based authentication
+
+        **Notes:**  
+        - Access tokens last ~1 hour  
+        - Refresh tokens last ~30 days
       tags:
         - Email Auth
       consumes:
@@ -52,7 +93,7 @@ paths:
               - password
       responses:
         "200":
-          description: Login successful (sets httpOnly access & refresh token cookies)
+          description: "Login successful (cookies set: access_token, refresh_token)"
           schema:
             $ref: '#/definitions/EmailLoginSuccess'
         "400":
@@ -60,9 +101,24 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /api/v1/auth/register:
+  /auth/register:
     post:
       summary: Register a new user with email, password, and username
+      description: |
+        **Purpose:** Create a new account for an end-user with email, password, and username.
+
+        **Who Can Use:**  
+        - Frontend signup flows (web/mobile)  
+        - Public-facing onboarding UI
+
+        **Returns:**  
+        - New user profile  
+        - 201 Created  
+        - Optional authentication cookies if auto-login succeeds
+
+        **Notes:**  
+        - Email must be unique  
+        - All fields are mandatory
       tags:
         - Email Auth
       consumes:
@@ -86,7 +142,7 @@ paths:
               - username
       responses:
         "201":
-          description: User registered successfully. If auto-login succeeds returns tokens; otherwise returns a message.
+          description: User registered successfully (may also have tokens if auto-login succeeded).
           schema:
             $ref: '#/definitions/RegisterSuccess'
         "400":
@@ -94,13 +150,21 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-# IMPORTANT: Callback remains unversioned (basePath does NOT apply). Document separately.
-# The live endpoint is /auth/callback outside /api/v1 for OAuth redirect URI stability.
-
-  /api/v1/auth/logout:
+  /auth/logout:
     post:
       summary: Log out the authenticated user
-      description: Removes auth cookies (access_token, refresh_token) and returns a message.
+      description: |
+        **Purpose:** Terminate an active session by clearing authentication cookies.
+
+        **Who Can Use:**  
+        - Browser applications with active logged-in sessions  
+        - Mobile apps maintaining session cookies
+
+        **Returns:**  
+        - Confirmation message indicating successful logout
+
+        **Notes:**  
+        Logout is idempotent: call succeeds even if already logged out.
       tags:
         - Utility
       responses:
@@ -109,10 +173,22 @@ paths:
           schema:
             $ref: '#/definitions/MessageResponse'
 
-  /api/v1//users/{user_id}:
+  /users/{user_id}:
     delete:
       summary: Delete a user by ID
-      description: Permanently removes a user from the database.
+      description: |
+        **Purpose:** Permanently remove a user from the system.
+
+        **Who Can Use:**  
+        - Admin dashboards  
+        - Internal microservices (via API Gateway) performing account cleanup
+
+        **Returns:**  
+        - Success message on deletion  
+        - Error if user does not exist
+
+        **Notes:**  
+        This is an irreversible operation.
       tags:
         - Users
       parameters:
@@ -131,10 +207,21 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /api/v1/users:
+  /users:
     get:
       summary: List all users
-      description: Returns an array of all registered users.
+      description: |
+        **Purpose:** Retrieve a complete list of registered users.
+
+        **Who Can Use:**  
+        - Admin dashboards needing visibility into users  
+        - Internal monitoring or analytics microservices
+
+        **Returns:**  
+        - `users[]` → Array of user profiles
+
+        **Notes:**  
+        Pagination may be added in future releases.
       tags:
         - Users
       responses:
@@ -148,10 +235,23 @@ paths:
                 items:
                   $ref: '#/definitions/User'
 
-  /ap1/v1/auth/refresh:
+  /auth/refresh:
     post:
       summary: Refresh access token
-      description: Accepts a refresh token from cookie or request body and returns new access & refresh tokens.
+      description: |
+        **Purpose:** Issue a new access token using the long-lived refresh token.
+
+        **Who Can Use:**  
+        - Browser or mobile applications with existing session cookies  
+        - Frontend apps performing silent token renewal
+
+        **Returns:**  
+        - New access_token cookie  
+        - Optional rotated refresh token  
+        - Updated authentication session
+
+        **Notes:**  
+        Refresh token may be passed via httpOnly cookie or body parameter.
       tags:
         - Utility
       consumes:
@@ -167,7 +267,7 @@ paths:
                 type: string
       responses:
         "200":
-          description: Tokens refreshed successfully (sets new access_token cookie)
+          description: Tokens refreshed successfully (new access_token cookie set)
           schema:
             $ref: '#/definitions/TokensResponse'
         "400":
@@ -179,10 +279,22 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
 
-  /api/v1/auth/me:
+  /auth/me:
     get:
       summary: Get logged-in user
-      description: Returns authenticated user info if access token is valid.
+      description: |
+        **Purpose:** Fetch the current authentication status and user profile without triggering errors.
+
+        **Who Can Use:**  
+        - Frontend applications validating session state after page load  
+        - Mobile applications checking active login
+
+        **Returns:**  
+        - `isAuthenticated: boolean`  
+        - `user: object | null`
+
+        **Notes:**  
+        Always returns 200 OK, even when no session exists.
       tags:
         - Utility
       responses:
@@ -196,12 +308,25 @@ paths:
               user:
                 $ref: '#/definitions/User'
 
-# Unversioned external OAuth path reference
+# Unversioned external OAuth path reference (outside basePath)
 x-unversioned-paths:
   /auth/callback:
     get:
       summary: Handle Google OAuth2 Callback (UNVERSIONED)
-      description: Exchanges authorization code for tokens, verifies them, sets httpOnly cookies, and redirects to frontend.
+      description: |
+        **Purpose:** Process Google’s redirect after user approval.
+
+        **Who Can Use:**  
+        - Google OAuth2 redirect service **only**  
+        (Frontend or end-users never call this directly)
+
+        **Returns:**  
+        - Sets authentication cookies  
+        - Redirects user to frontend dashboard  
+        - 302 redirect or JSON error on failure
+
+        **Notes:**  
+        This route must remain unversioned for Google OAuth compatibility.
       tags:
         - Google OAuth
       parameters:
