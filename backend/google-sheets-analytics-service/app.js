@@ -10,12 +10,17 @@ import { swaggerDocs } from "./src/routes/swaggerDocs.js";
 const app = express();
 app.use(express.json());
 
+// <-- Add this middleware here
+app.use((req, res, next) => {
+  console.log("Request body:", req.body);
+  next();
+});
+
 // Enable CORS for frontend
 app.use(cors({
   origin: "http://localhost:8000",
   methods: ["GET", "POST"],
 }));
-// app.use(cors());
 
 // Routes
 app.use("/api/v1/sheets", sheetsRoutes);
