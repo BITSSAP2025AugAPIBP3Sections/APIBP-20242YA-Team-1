@@ -61,7 +61,7 @@ async def process_vendor(
         vendor_folder_id=payload.vendorFolderId,
         refresh_token=payload.refreshToken,
     )
-
+    # Direct ingest now happens inside process_vendor_invoices; no additional knowledge load trigger here.
     return {"status": "processed", "summary": summary}
 
 

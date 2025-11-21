@@ -4,6 +4,7 @@ import crypto from "crypto";
 
 import User from "../models/User.js";
 import { saveToDrive } from "./driveService.js";
+import ProcessedAttachment from "../models/ProcessedAttachment.js";
 import { detectVendor } from "../utils/vendorDetection.js";
 import logger from "../utils/logger.js";
 
@@ -106,24 +107,74 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
         const lower = (part.filename || "").toLowerCase();
         const isAllowed = onlyPdf ? lower.endsWith(".pdf") : /\.(pdf|jpg|jpeg|png)$/.test(lower);
         if (!isAllowed) continue;
-        const attachment = await gmail.users.messages.attachments.get({
-          userId: "me",
-          messageId: msg.id,
-          id: part.body.attachmentId,
+        // Duplicate prevention: check registry first
+        const existing = await ProcessedAttachment.findOne({
+          userId: user._id,
+          gmailMessageId: msg.id,
+          gmailAttachmentId: part.body.attachmentId,
         });
 
-        const fileBuffer = Buffer.from(attachment.data.data, "base64");
         let uploadResult;
-        try {
-          uploadResult = await saveToDrive(user, vendor, fileBuffer, part.filename);
-        } catch (error) {
-          logger.error("Failed to save attachment to Drive", {
+        let fileBuffer; // only fetch and decode if not already processed
+        if (existing) {
+          logger.info("Reusing previously uploaded attachment", {
             userId,
             vendor,
             filename: part.filename,
-            error: error.message,
+            driveFileId: existing.driveFileId,
           });
-          continue;
+          uploadResult = {
+            fileId: existing.driveFileId,
+            skipped: true,
+            vendorFolderId: existing.vendorFolderId,
+            vendorFolderName: existing.vendor || vendor,
+            vendorDisplayName: existing.vendor || vendor,
+            invoiceFolderId: existing.invoiceFolderId,
+            webViewLink: existing.webViewLink,
+            webContentLink: existing.webContentLink,
+          };
+        } else {
+          const attachment = await gmail.users.messages.attachments.get({
+            userId: "me",
+            messageId: msg.id,
+            id: part.body.attachmentId,
+          });
+          fileBuffer = Buffer.from(attachment.data.data, "base64");
+          try {
+            uploadResult = await saveToDrive(user, vendor, fileBuffer, part.filename);
+          } catch (error) {
+            logger.error("Failed to save attachment to Drive", {
+              userId,
+              vendor,
+              filename: part.filename,
+              error: error.message,
+            });
+            continue;
+          }
+          // Compute hash for possible future dedup across messages
+          let sha256 = null;
+          try {
+            const hash = crypto.createHash("sha256");
+            hash.update(fileBuffer);
+            sha256 = hash.digest("hex");
+          } catch (_) {}
+          try {
+            await ProcessedAttachment.create({
+              userId: user._id,
+              gmailMessageId: msg.id,
+              gmailAttachmentId: part.body.attachmentId,
+              vendor,
+              fileName: part.filename,
+              driveFileId: uploadResult.fileId,
+              vendorFolderId: uploadResult.vendorFolderId,
+              invoiceFolderId: uploadResult.invoiceFolderId,
+              webViewLink: uploadResult.webViewLink,
+              webContentLink: uploadResult.webContentLink,
+              sha256,
+            });
+          } catch (regErr) {
+            logger.error("Failed to persist attachment registry", { regErr: regErr.message });
+          }
         }
         const uploadInfo = {
           vendor,
@@ -141,12 +192,7 @@ export const fetchAndProcessEmails = async (userId, fromDate, filters) => {
         };
         uploadedFiles.push(uploadInfo);
 
-        if (uploadResult.skipped) {
-          logger.info(`Skipped duplicate file`, { vendor, filename: part.filename });
-          if (!forceSync) {
-            continue;
-          }
-        } else {
+        if (!uploadResult.skipped) {
           uploadedCount++;
         }
 

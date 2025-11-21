@@ -27,4 +27,5 @@ chromadb
 
 pandas
 strawberry-graphql[fastapi]  # GraphQL + FastAPI integration
+httpx  # HTTP client for external service calls
 

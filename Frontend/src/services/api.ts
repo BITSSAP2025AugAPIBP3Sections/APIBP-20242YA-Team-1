@@ -4,6 +4,11 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || "http://localhost:4002";
+// Chat service base (ensure defined to prevent runtime ReferenceError)
+// Priority order: explicit VITE_CHAT_BASE_URL, legacy VITE_CHAT_API_URL, fallback localhost
+const CHAT_BASE_URL = (import.meta as any).env?.VITE_CHAT_BASE_URL
+  || (import.meta as any).env?.VITE_CHAT_API_URL
+  || "http://localhost:4005/api/v1";
 
 // Type definitions
 export interface SyncStatus {
@@ -66,6 +71,36 @@ export interface ScheduledJob {
   nextRun?: string;
   status?: "active" | "paused";
   createdAt: string;
+}
+
+// Chat / RAG Types
+export interface ChatSource {
+  rank: number;
+  vendor_name?: string;
+  similarity?: number;
+  content_excerpt?: string;
+}
+
+export interface ChatAnswerResponse {
+  success: boolean;
+  vendor_name: string | null;
+  question: string;
+  answer: string;
+  sources: ChatSource[];
+  message?: string;
+  context_text?: string;
+  vendor_detection?: string;
+}
+
+export interface ChatVendorSummary {
+  success: boolean;
+  vendor_info?: {
+    vendor_name: string;
+    total_chunks: number;
+    invoices: { invoice_number: string; amount: any; invoice_date: string }[];
+    summary: { last_updated?: string; total_invoices?: number; total_amount?: number };
+  };
+  message?: string;
 }
 
 export interface FetchEmailsRequest {

@@ -241,9 +241,19 @@ const Invoices = () => {
     });
   };
 
-  const filteredInvoices = invoices.filter(invoice =>
-    invoice.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Exclude master.json (the processed summary file) from the invoice list display
+  const filteredInvoices = invoices
+    .filter(inv => inv.name.toLowerCase() !== 'master.json')
+    .filter(invoice => invoice.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  // Pagination (7 per page)
+  const PAGE_SIZE = 7;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE));
+  const paginatedInvoices = filteredInvoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [filteredInvoices.length, totalPages, page]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -682,9 +692,6 @@ const Invoices = () => {
               className="pl-9"
             />
           </div>
-          <span className="text-sm text-muted-foreground">
-            {filteredInvoices.length} of {invoices.length} invoices
-          </span>
         </div>
       )}
 
@@ -738,85 +745,85 @@ const Invoices = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filteredInvoices.map((invoice, index) => (
-            <Card
-              key={invoice.id}
-              className="hover:shadow-md transition-all animate-in fade-in slide-in-from-left-4"
-              style={{ animationDelay: `${index * 30}ms` }}
-            >
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{invoice.name}</h3>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                        {invoice.createdTime && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(invoice.createdTime)}
-                          </span>
-                        )}
-                        {invoice.size && (
-                          <span>{formatFileSize(invoice.size)}</span>
-                        )}
-                        <span className="font-mono truncate">{invoice.id.substring(0, 10)}...</span>
+        <>
+          <div className="space-y-3">
+            {paginatedInvoices.map((invoice, index) => (
+              <Card
+                key={invoice.id}
+                className="hover:shadow-md transition-all animate-in fade-in slide-in-from-left-4"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{invoice.name}</h3>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                          {invoice.createdTime && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(invoice.createdTime)}
+                            </span>
+                          )}
+                          {invoice.size && (
+                            <span>{formatFileSize(invoice.size)}</span>
+                          )}
+                          <span className="font-mono truncate">{invoice.id.substring(0, 10)}...</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openInvoice(invoice.webViewLink, invoice.name)}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => downloadInvoice(invoice.webContentLink, invoice.name)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openInvoice(invoice.webViewLink, invoice.name)}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => downloadInvoice(invoice.webContentLink, invoice.name)}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Prev
+              </Button>
+              <span className="text-xs text-muted-foreground">Page {page} of {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Summary Stats */}
-      {invoices.length > 0 && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <span className="font-semibold">Total Invoices:</span>
-                </div>
-                <span className="text-2xl font-bold text-primary">{invoices.length}</span>
-              </div>
-              {filteredInvoices.length !== invoices.length && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">Filtered:</span>
-                  </div>
-                  <span className="text-2xl font-bold text-primary">{filteredInvoices.length}</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Counts removed per requirement */}
 
       {/* Analytics Section relocated above */}
     </div>

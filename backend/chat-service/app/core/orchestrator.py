@@ -7,16 +7,31 @@ from app.config import VENDOR_DATA_DIRECTORY, VECTORDB_PERSIST_DIRECTORY
 
 
 class VendorKnowledgeOrchestrator:
-    """Coordinates data loading, embedding generation, vector storage & RAG QA."""
+    """Coordinates data loading, embedding generation, vector storage & RAG QA.
+
+    Supports optional per-user remote loading when a `user_id` is provided to
+    `process_vendor_data`. If `user_id` is passed the loader will attempt to
+    fetch a remote master.json (drive metadata) before falling back to local
+    sample data directory.
+    """
     def __init__(self, data_directory: str = VENDOR_DATA_DIRECTORY, vectordb_directory: str = VECTORDB_PERSIST_DIRECTORY):
         self.data_loader = VendorDataLoader(data_directory)
         self.embedding_service = EmbeddingService()
         self.vector_db = VectorDatabase(vectordb_directory)
         self.llm_service = LLMService(self.embedding_service, self.vector_db)  # added
 
-    def process_vendor_data(self, incremental: bool = False) -> Dict[str, Any]:
+    def process_vendor_data(self, incremental: bool = False, user_id: Optional[str] = None, refresh_token: Optional[str] = None) -> Dict[str, Any]:
         try:
-            dataset = self.data_loader.load_vendor_json_files()
+            # If user_id supplied attempt remote load; fallback to local files
+            dataset = None
+            if user_id and refresh_token:
+                try:
+                    dataset = self.data_loader.load_remote_master(user_id, refresh_token)
+                    print(f"Remote master data loaded for user {user_id}")
+                except Exception as e:
+                    print(f"Remote load failed for user {user_id}: {e}; falling back to local vendor JSON files")
+            if not dataset:
+                dataset = self.data_loader.load_vendor_json_files()
             print(f"Loaded {len(dataset.vendors)} vendors")
 
             if not dataset.vendors:
@@ -55,6 +70,28 @@ class VendorKnowledgeOrchestrator:
             }
         except Exception as e:
             return {"success": False, "message": f"Error in processing data: {str(e)}", "stats": {}}
+
+    def process_direct_dataset(self, dataset, incremental: bool = False) -> Dict[str, Any]:
+        """Embed & store a pre-built VendorDataset supplied directly (bypasses loading)."""
+        try:
+            if not dataset or not getattr(dataset, 'vendors', None):
+                return {"success": False, "message": "Empty vendor dataset", "stats": {}}
+            chunks = self.data_loader.convert_to_knowledge_chunks(dataset)
+            if incremental:
+                existing_ids = set(self.vector_db.list_ids())
+                chunks = [c for c in chunks if c.chunk_id not in existing_ids]
+            embedded_chunks = self.embedding_service.generate_embeddings(chunks)
+            storage_success = self.vector_db.store_embeddings(embedded_chunks)
+            db_stats = self.vector_db.get_collection_stats()
+            return {
+                "success": storage_success,
+                "message": "Direct vendor dataset ingested",
+                "stats": db_stats,
+                "chunks_processed": len(embedded_chunks),
+                "incremental": incremental,
+            }
+        except Exception as e:
+            return {"success": False, "message": f"Direct dataset ingestion failed: {e}", "stats": {}}
 
     def search_vendor_knowledge(self, query: str, n_results: int = 5) -> Dict[str, Any]:
         try:
@@ -179,6 +216,44 @@ class VendorKnowledgeOrchestrator:
         if not vendor_name:
             vendor_name = detect_vendor_name(question, self.vector_db.list_vendors(), self.llm_service)
         if not vendor_name:
+            # Structured full detail across ALL vendors (bypass LLM) if explicitly requested
+            if full_detail_requested:
+                ranking = self.vector_db.get_vendor_spend_totals()
+                if not ranking:
+                    return {"success": False, "message": "No vendor spend data available", "answer": "", "sources": []}
+                total_spend_all = sum(r.get("total_spend", 0.0) for r in ranking)
+                total_invoices_all = sum(r.get("invoice_count", 0) for r in ranking)
+                lines = [
+                    "All Vendor Details (structured factual list):",
+                    f"Total Vendors: {len(ranking)} | Aggregate Spend: ₹{total_spend_all:.2f} | Aggregate Invoices: {total_invoices_all}",
+                    "",
+                ]
+                # Provide every vendor line (no LLM truncation or markdown emphasis)
+                for r in ranking:
+                    lines.append(
+                        f"Vendor: {r['vendor_name']} | Invoices: {r['invoice_count']} | Total Amount (INR): ₹{r['total_spend']:.2f}"
+                    )
+                answer_text = "\n".join(lines)
+                structured_sources = [
+                    {
+                        "rank": i + 1,
+                        "vendor_name": r["vendor_name"],
+                        "total_amount": r["total_spend"],
+                        "invoice_count": r["invoice_count"],
+                        "type": "vendor_summary",
+                    }
+                    for i, r in enumerate(ranking)
+                ]
+                return {
+                    "success": True,
+                    "vendor_name": None,
+                    "question": question,
+                    "answer": answer_text,
+                    "sources": structured_sources,
+                    "context_text": "all_vendor_full_detail_structured",
+                    "message": "Structured all-vendor detail generated without LLM",
+                    "vendor_detection": "explicit full detail all vendors"
+                }
             # Fallback: aggregate top chunks across all vendors instead of erroring
             all_vendors = self.vector_db.list_vendors()
             if not all_vendors:
@@ -217,11 +292,37 @@ class VendorKnowledgeOrchestrator:
                 f"[Source {s['rank']} | {s['vendor_name']} | sim {s['similarity']:.3f}]\n{s['content_excerpt']}" for s in sources
             )
             rag_response = self.llm_service.generate_answer(question=question, sources=sources)
+            answer_text = rag_response.get("answer", "")
+            # Safety fallback for multi-vendor aggregated queries
+            if isinstance(answer_text, str) and "Response blocked by safety filters" in answer_text:
+                ranking = self.vector_db.get_vendor_spend_totals()
+                lines = ["Multi-Vendor Summary (factual aggregate):"]
+                total_spend_all = 0.0
+                total_invoices_all = 0
+                for r in ranking:
+                    total_spend_all += r.get("total_spend", 0.0)
+                    total_invoices_all += r.get("invoice_count", 0)
+                lines.append(f"Total Vendors: {len(ranking)} | Aggregate Spend: ₹{total_spend_all:.2f} | Aggregate Invoices: {total_invoices_all}")
+                lines.append("")
+                for idx, r in enumerate(ranking[:max(n_results, 8)]):
+                    lines.append(
+                        f"{idx+1}. {r['vendor_name']} | Spend: ₹{r['total_spend']:.2f} | Invoices: {r['invoice_count']}"
+                    )
+                answer_text = "\n".join(lines)
+                return {
+                    "success": True,
+                    "vendor_name": None,
+                    "question": question,
+                    "answer": answer_text,
+                    "sources": sources,
+                    "context_text": context_text,
+                    "message": "Safety fallback multi-vendor aggregate summary"
+                }
             return {
                 "success": rag_response.get("success", False),
                 "vendor_name": None,  # Unknown / multiple
                 "question": question,
-                "answer": rag_response.get("answer", ""),
+                "answer": answer_text,
                 "sources": sources,
                 "context_text": context_text,
                 "message": rag_response.get("message", "ok"),
@@ -434,8 +535,7 @@ class VendorKnowledgeOrchestrator:
 
             cost_reduction = 0.0
             avg_payment_time = 0.0
-
-            return {
+            data = {
                 "success": True,
                 "insights": {
                     "highestSpend": {"vendor": highest["vendor_name"], "amount": highest["total_spend"]},
@@ -452,8 +552,56 @@ class VendorKnowledgeOrchestrator:
                 "quarterlyTrend": quarterly_trend,
                 "period": period,
             }
+            # Gemini summary generation each call
+            try:
+                summary_prompt = (
+                    "You are a financial spend analytics assistant. Given the following JSON analytics object, "
+                    "produce a concise (<=120 words) plain English summary highlighting: overall spend, highest vendor, "
+                    "invoice volume, notable monthly or quarterly trend (increasing/decreasing), and any concentration risk. "
+                    "Avoid bullet points; use 2-3 sentences.\n\nJSON Data:\n" + str(data)
+                )
+                llm_text = self.llm_service.quick(summary_prompt, system="Spend Analytics Summarizer")
+                cleaned = llm_text.strip()
+                # Safety fallback: if blocked, build deterministic plain summary
+                if "Response blocked by safety filters" in cleaned:
+                    data["llmSummary"] = self._build_plain_analytics_summary(data)
+                else:
+                    data["llmSummary"] = cleaned
+            except Exception as e:
+                data["llmSummary"] = f"LLM summary unavailable: {e}" 
+            return data
         except Exception as e:
             return {"success": False, "message": f"Analytics computation failed: {e}"}
+
+    def _build_plain_analytics_summary(self, analytics: Dict[str, Any]) -> str:
+        """Deterministic non-LLM summary used when safety blocks or LLM fails."""
+        try:
+            insights = analytics.get("insights", {})
+            highest = insights.get("highestSpend", {})
+            total_spend = insights.get("totalSpend", 0)
+            total_invoices = insights.get("totalInvoices", 0)
+            vendor_count = insights.get("vendorCount", 0)
+            monthly = analytics.get("monthlyTrend", [])
+            quarterly = analytics.get("quarterlyTrend", [])
+            trend_part = ""
+            if monthly:
+                last_vals = [m.get("value", 0) for m in monthly[-3:]]
+                if len(last_vals) >= 2:
+                    diff = last_vals[-1] - last_vals[0]
+                    direction = "rising" if diff > 0 else ("falling" if diff < 0 else "stable")
+                    trend_part = f" Recent monthly trend appears {direction}."
+            concentration = ""
+            ranking = self.vector_db.get_vendor_spend_totals()
+            if ranking:
+                top_share = (ranking[0]["total_spend"] / total_spend) if total_spend else 0
+                if top_share > 0.5:
+                    concentration = f" Significant concentration: top vendor accounts for {top_share*100:.1f}% of spend."
+            return (
+                f"Total spend ₹{total_spend:.2f} across {vendor_count} vendors and {total_invoices} invoices. "
+                f"Highest spend vendor: {highest.get('vendor', 'N/A')} (₹{highest.get('amount', 0):.2f})." + trend_part + concentration
+            )
+        except Exception:
+            return "Analytics summary unavailable." 
 
     async def incremental_update(self, user_id: str | None = None) -> Dict[str, Any]:
         return await self.process_vendor_data(incremental=True, user_id=user_id)
