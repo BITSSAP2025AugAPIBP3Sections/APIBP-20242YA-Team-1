@@ -4,6 +4,8 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || "http://localhost:4002";
+// Added: dedicated auth service base (different port) for /auth/me token retrieval
+const AUTH_BASE_URL = (import.meta as any).env?.VITE_AUTH_SERVICE_URL || "http://localhost:4001";
 // Chat service base (ensure defined to prevent runtime ReferenceError)
 // Priority order: explicit VITE_CHAT_BASE_URL, legacy VITE_CHAT_API_URL, fallback localhost
 const CHAT_BASE_URL = (import.meta as any).env?.VITE_CHAT_BASE_URL
@@ -137,20 +139,62 @@ export interface FetchEmailsResponse {
   };
 }
 
-// Helper function for API calls
+// ============================================================
+// Access Token Handling (Bearer)
+// ============================================================
+let accessToken: string | null = null; // in-memory cache (not persisted)
+let triedFetchMe = false; // avoid repeated /auth/me calls
+
+/**
+ * Manually set (or clear) the access token after login/logout flows.
+ */
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+/**
+ * Retrieve current access token, attempting single lazy fetch via /auth/me if not cached.
+ * Uses auth service base. Relies on httpOnly cookie being sent automatically (credentials: 'include').
+ */
+export async function ensureAccessToken(): Promise<string | null> {
+  if (accessToken) return accessToken;
+  if (triedFetchMe) return null; // already attempted, don't spam
+  triedFetchMe = true;
+  try {
+    const resp = await fetch(`${AUTH_BASE_URL}/api/v1/auth/me`, { credentials: 'include' });
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    if (json?.isAuthenticated && json?.access_token) {
+      accessToken = json.access_token;
+      return accessToken;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper function for API calls (email-storage-service)
 async function apiCall<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { skipAuth?: boolean }
 ): Promise<{ data: T; response: Response }> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const publicPaths = new Set<string>(['/', '/health', '/api-info', '/api-docs', '/auth/google', '/auth/google/callback']);
+  let authHeader: Record<string, string> = {};
+  if (!options?.skipAuth && !publicPaths.has(endpoint)) {
+    const token = await ensureAccessToken();
+    if (token) authHeader.Authorization = `Bearer ${token}`;
+  }
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
+      ...authHeader,
       ...options?.headers,
     },
+    credentials: 'include', // ensure cookies (refresh/access) are sent for any silent flows
   });
-
   const data = await response.json();
   return { data, response };
 }
@@ -161,7 +205,7 @@ async function apiCall<T>(
 
 /**
  * Get Google OAuth URL
- * Redirects to Google OAuth flow
+ * Redirects to Google OAuth flow (public – skip bearer attachment)
  */
 export function getGoogleAuthUrl(): string {
   return `${API_BASE_URL}/auth/google`;
