@@ -28,55 +28,124 @@ class VectorDatabase:
         print(f"Vector database initialized with collection: {self.collection.name}")
     
     def store_embeddings(self, chunks: List[KnowledgeChunk]) -> bool:
-        """Store knowledge chunks with embeddings in the vector database."""
+        """Store knowledge chunks with embeddings in the vector database.
+        Safely handles duplicate IDs by updating existing entries or generating unique IDs.
+        """
         try:
-            # Prepare data for ChromaDB
-            ids = []
-            embeddings = []
-            documents = []
-            metadatas = []
-            
-            for chunk in chunks:
-                if chunk.embedding and len(chunk.embedding) > 0:
-                    ids.append(chunk.chunk_id)
-                    embeddings.append(chunk.embedding)
-                    documents.append(chunk.content)
-                    
-                    # Convert metadata to JSON-serializable format
-                    metadata = chunk.metadata.copy()
-                    metadata["chunk_id"] = chunk.chunk_id
-                    metadata["vendor_name"] = chunk.vendor_name
-                    
-                    # Convert complex objects to strings for ChromaDB compatibility
-                    for key, value in metadata.items():
-                        if isinstance(value, (list, dict)):
-                            # Convert lists and dicts to JSON strings
-                            import json
-                            metadata[key] = json.dumps(value)
-                        elif value is None:
-                            metadata[key] = ""
-                        elif not isinstance(value, (str, int, float, bool)):
-                            # Convert other types to strings
-                            metadata[key] = str(value)
-                    
-                    metadatas.append(metadata)
-                    self.vendor_names.add(chunk.vendor_name)
-            
-            if not ids:
+            # Fetch existing IDs from collection to distinguish add vs update
+            try:
+                existing_data = self.collection.get(include=[])
+                existing_ids_set = set(existing_data.get("ids", []))
+            except Exception:
+                existing_ids_set = set()
+
+            add_ids: List[str] = []
+            add_embeddings: List[List[float]] = []
+            add_documents: List[str] = []
+            add_metadatas: List[Dict[str, Any]] = []
+
+            update_ids: List[str] = []
+            update_embeddings: List[List[float]] = []
+            update_documents: List[str] = []
+            update_metadatas: List[Dict[str, Any]] = []
+
+            seen_batch_ids: set[str] = set()
+
+            for idx, chunk in enumerate(chunks):
+                if not (chunk.embedding and len(chunk.embedding) > 0):
+                    continue
+                original_id = chunk.chunk_id
+                cid = original_id
+                # Ensure intra-batch uniqueness
+                if cid in seen_batch_ids:
+                    # create deterministic suffix based on index position
+                    suffix = f"-dup{idx}"
+                    cid = f"{original_id}{suffix}"
+                    # reflect new id in metadata only; do not mutate chunk_id field externally
+                # Prepare metadata
+                metadata = chunk.metadata.copy()
+                metadata["chunk_id"] = cid
+                metadata["vendor_name"] = chunk.vendor_name
+                for key, value in metadata.items():
+                    if isinstance(value, (list, dict)):
+                        import json
+                        metadata[key] = json.dumps(value)
+                    elif value is None:
+                        metadata[key] = ""
+                    elif not isinstance(value, (str, int, float, bool)):
+                        metadata[key] = str(value)
+
+                # Decide add vs update
+                if original_id in existing_ids_set and cid == original_id:
+                    update_ids.append(cid)
+                    update_embeddings.append(chunk.embedding)
+                    update_documents.append(chunk.content)
+                    update_metadatas.append(metadata)
+                else:
+                    add_ids.append(cid)
+                    add_embeddings.append(chunk.embedding)
+                    add_documents.append(chunk.content)
+                    add_metadatas.append(metadata)
+
+                seen_batch_ids.add(cid)
+                self.vendor_names.add(chunk.vendor_name)
+
+            total_ops = len(add_ids) + len(update_ids)
+            if total_ops == 0:
                 print("No valid embeddings to store!")
                 return False
-            
-            # Add to ChromaDB collection
-            self.collection.add(
-                ids=ids,
-                embeddings=embeddings,
-                documents=documents,
-                metadatas=metadatas
-            )
-            
-            print(f"Successfully stored {len(ids)} embeddings in vector database")
+
+            # Perform adds
+            if add_ids:
+                self.collection.add(
+                    ids=add_ids,
+                    embeddings=add_embeddings,
+                    documents=add_documents,
+                    metadatas=add_metadatas,
+                )
+
+            # Perform updates for existing IDs
+            if update_ids:
+                updated = False
+                try:
+                    # Preferred path if update API exists
+                    if hasattr(self.collection, "update"):
+                        self.collection.update(
+                            ids=update_ids,
+                            embeddings=update_embeddings,
+                            documents=update_documents,
+                            metadatas=update_metadatas,
+                        )
+                        updated = True
+                    elif hasattr(self.collection, "upsert"):
+                        # Some versions provide upsert combining add/update semantics
+                        self.collection.upsert(
+                            ids=update_ids,
+                            embeddings=update_embeddings,
+                            documents=update_documents,
+                            metadatas=update_metadatas,
+                        )
+                        updated = True
+                except Exception as ue:
+                    print(f"Update/upsert failed ({ue}); attempting delete+add fallback for {len(update_ids)} IDs")
+
+                if not updated:
+                    # Fallback: delete then add back
+                    try:
+                        self.collection.delete(ids=update_ids)
+                        self.collection.add(
+                            ids=update_ids,
+                            embeddings=update_embeddings,
+                            documents=update_documents,
+                            metadatas=update_metadatas,
+                        )
+                    except Exception as de:
+                        print(f"Fallback delete+add failed: {de}")
+                        return False
+
+            print(f"Successfully stored embeddings. Added: {len(add_ids)}, Updated: {len(update_ids)}, Total processed: {total_ops}")
             return True
-            
+
         except Exception as e:
             print(f"Error storing embeddings: {str(e)}")
             return False
