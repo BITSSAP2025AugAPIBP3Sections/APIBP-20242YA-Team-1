@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
-import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, LucideIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, LucideIcon, Mail, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -131,37 +132,57 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <div className="h-4 w-4 rounded-full border-2 border-t-transparent animate-spin" />
-          <span>{slow ? "Still computing analytics..." : "Loading analytics..."}</span>
-        </div>
-        {/* Skeleton metric cards */}
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-md bg-muted animate-pulse" />
-          ))}
+      <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+        <div className="flex flex-col items-center gap-6">
+          <div className="h-16 w-16 rounded-full border-4 border-t-transparent animate-spin mb-4" style={{ borderColor: '#e5e7eb' }} />
+          <h2 className="text-2xl font-bold text-muted-foreground">
+            {slow ? "Hang tight! Your analytics are being computed..." : "Loading your analytics data..."}
+          </h2>
+          <p className="text-lg text-muted-foreground text-center max-w-xl">
+            This may take a few moments if you have a large number of invoices or vendors. Please wait while we gather your insights.
+          </p>
         </div>
       </div>
     );
   }
   if (error) {
     return (
-      <div className="space-y-4">
-        <p className="text-sm text-red-600">{error}</p>
-        <button
-          onClick={() => {
-            setPeriod(p => p); // trigger re-fetch by resetting state
-            setLoading(true);
-            setAnalytics(null);
-          }}
-          className="px-3 py-1 text-sm rounded border bg-background hover:bg-muted"
-        >Retry</button>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+        <div className="flex flex-col items-center gap-6">
+          <h2 className="text-2xl font-bold text-muted-foreground">No analytics data available</h2>
+          <p className="text-lg text-muted-foreground text-center max-w-xl">
+            We couldn't find any analytics for your connected account yet.<br />
+            Please sync your mail or connect your Gmail account.<br />
+            Go to <strong>Settings</strong> to check the status and sync your data.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
+            <strong>Tip:</strong> After connecting your email, make sure to sync to see your latest analytics. If you face issues, retry syncing or check your connection status in Settings.
+          </div>
+        </div>
       </div>
     );
   }
   if (!analytics) {
-    return <p className="text-sm text-muted-foreground">No analytics data yet. Index vendor data first.</p>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+        <div className="flex flex-col items-center gap-6">
+          <h2 className="text-2xl font-bold text-muted-foreground">No analytics data available</h2>
+          <p className="text-lg text-muted-foreground text-center max-w-xl">
+            We couldn't find any analytics for your connected account yet.<br />
+            Please sync your mail or connect your <Mail className="inline w-5 h-5 align-text-bottom text-red-500" aria-label="Gmail" /> account.<br />
+            <Button onClick={() => window.location.href = '/settings'} variant="outline" size="lg">
+                <Mail className="h-4 w-4 mr-2 text-red-500" />
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Go to Settings
+              </Button>
+            to check the status and sync your data.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
+            <strong>Tip:</strong> After connecting your email, make sure to sync to see your latest analytics. If you face issues, retry syncing or check your connection status in Settings.
+          </div>
+        </div>
+      </div>
+    );
   }
   if (analytics.success === false) {
     return <p className="text-sm text-red-600">{analytics.message || "Analytics unavailable"}</p>;

@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.invoice_processor import process_all_invoices, process_vendor_invoices
 
-router = APIRouter(prefix="/api/v1/processing", tags=["Processing"])
+router = APIRouter(prefix="/api/v1/processing", tags=["Processing"], include_in_schema=False)
 
 OCR_TRIGGER_TOKEN = os.getenv("OCR_TRIGGER_TOKEN")
 
