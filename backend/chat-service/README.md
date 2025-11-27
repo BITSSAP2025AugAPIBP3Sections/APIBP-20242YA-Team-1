@@ -281,3 +281,50 @@ This service integrates with:
 - **Google Sheets Analytics Service** - Vendor and invoice data
 - **OCR Extraction Service** - Structured invoice data extraction
 - **Frontend** - Chat interface and user interactions
+
+
+----------------------------------------
+
+# Build
+docker build -t chat-service:latest .
+
+# Stop existing container (if running)
+docker stop chat-service 2>/dev/null && docker rm chat-service 2>/dev/null || true
+
+# Run with .env file
+docker run -d \
+  --name chat-service \
+  --env-file .env \
+  -p 4005:4005 \
+  -v "$(pwd)/data:/app/data" \
+  chat-service:latest
+
+# View logs
+docker logs -f chat-service
+
+# Stop
+docker stop chat-service && docker rm chat-service
+
+--------------------------
+
+
+# 1. Start Minikube
+minikube start
+
+# 2. Apply deployment
+kubectl apply -f k8s/k8s-deployment.yaml
+
+# 3. Check pods
+kubectl get pods -n vendoriq
+
+# 4. Check service
+kubectl get svc -n vendoriq
+
+# 5. View logs
+kubectl logs -n vendoriq -l app=chat-service -f
+
+# 6. Port forward to access locally
+kubectl port-forward -n vendoriq service/chat-service 4005:4005
+
+# 7. Or get Minikube service URL
+minikube service chat-service -n vendoriq --url
