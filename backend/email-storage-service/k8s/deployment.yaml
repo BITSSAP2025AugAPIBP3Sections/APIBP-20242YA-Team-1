@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-service
+  labels:
+    app: email-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email-service
+  template:
+    metadata:
+      labels:
+        app: email-service
+    spec:
+      containers:
+      - name: email-service
+        image: vendoriq-email-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 4002
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: email-service-config
+              key: PORT
+
+        - name: GOOGLE_REDIRECT_URI
+          valueFrom:
+            configMapKeyRef:  
+              name: email-service-config
+              key: GOOGLE_REDIRECT_URI  
+        
+        - name: MONGO_URI
+          valueFrom:
+            configMapKeyRef:
+              name: email-service-config
+              key: MONGO_URI
+
+        # Secrets
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: email-service-secret
+              key: GOOGLE_CLIENT_ID
+        
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: email-service-secret
+              key: GOOGLE_CLIENT_SECRET
+        
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: email-service-secret
+              key: JWT_SECRET
+        
+        - name: JWT_ALGORITHM
+          valueFrom:
+            secretKeyRef:
+              name: email-service-secret
+              key: JWT_ALGORITHM

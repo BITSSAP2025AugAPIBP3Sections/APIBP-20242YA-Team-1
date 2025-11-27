@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: email-service-config
+data:
+  PORT: value
+  GOOGLE_REDIRECT_URI: value
+  MONGO_URI: value
+  
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: email-service-secret
+type: Opaque
+data:
+  GOOGLE_CLIENT_ID: <base64>
+  GOOGLE_CLIENT_SECRET: <base64>
+  JWT_SECRET: <base64>
+  JWT_ALGORITHM: <base64>
