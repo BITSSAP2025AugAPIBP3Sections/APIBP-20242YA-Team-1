@@ -121,15 +121,59 @@ http://localhost:4001/docs
   - Open `http://localhost:4002/health`
   - Swagger: `http://localhost:4002/api-docs`
 
+To push any changes and create new image 
 - To build the docker image after changes
   - Build `docker build -t gourav094/vendoriq-email-service:latest .`
   
-Notes:
-- Ensure `PORT=4002` (or map ports accordingly).
-- Provide `MONGODB_URI`, `GOOGLE_*`, `JWT_*`, etc., in `.env`.
-- For Compose, use the included `docker-compose.yaml` and run `docker compose up -d`.
-
 --- 
+
+## Deploye to K8s
+- To start with k8s, we can two ways. One way is using 
+  - Docker Desktop Kubernetes: No installation required. Just enable through settings
+  - minikube: needs installation
+
+- Using minikube 
+  - minikube start (make sure minikube)
+  - kubectl get nodes
+  - eval $(minikube docker-env) (means using kubernetes CLI) -> verify host `echo $DOCKER_HOST`
+  - docker build -t vendoriq-auth-service:latest . (image will be build into kuberenetes)
+  - minikube ssh -> docker images | grep vendoriq-auth-service -> after working `exit`
+  - Inside your k8s/ folder:
+    ``` 
+    kubectl apply -f k8s-env.yaml
+    kubectl apply -f deployment.yaml
+    kubectl apply -f service.yaml 
+    ```   
+  - Check pods and services
+    ```
+    kubectl get pods
+    kubectl get svc
+    kubectl get deploy
+    ```
+  - Accessing service -> kubectl port-forward svc/auth-service 4001:4001
+  - minikube dashboard
+  - To check logs `kubectl logs auth-service-6957c58df4-fhvfn`
+
+
+
+## Scaling using Docker
+- Get service name `kubectl get svc`
+- Scale deployement `kubectl scale deployment auth-service --replicas=2`
+- kubectl get pods -> now there will be 2 replica for auth-service
+
+- intentionally kill a pod
+  - List pod: `kubectl get pods` and pick one like auth-service-57b12
+  - Delete it intentionally: kubectl delete pod auth-service-57b12
+  - kubectl get pods
+
+-Watch pods in real time: kubectl get pods -w
+
+
+
+
+
+Note: Create k8s-env.yaml file with environment variable
+    
 
 ##  API Endpoints
 
