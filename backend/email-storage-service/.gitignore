@@ -1,2 +1,5 @@
 node_modules
 .env
+k8s/k8s-env.yaml
+.DS_Store
+.vscode
