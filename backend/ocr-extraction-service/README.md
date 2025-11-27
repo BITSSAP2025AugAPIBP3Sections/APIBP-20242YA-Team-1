@@ -72,3 +72,83 @@ app/
 - Optional header `x-ocr-token` must match the `OCR_TRIGGER_TOKEN` env var when set.
 - Processed JSON files are written to `invoices_json/<invoiceFolderId>/` and a vendor-level `master.json` is generated locally and pushed back to Google Drive.
 - To fetch the latest vendor/invoice lists and process everything in one shot, call `POST /api/v1/processing/vendor/sync` with `{ "userId": "..." }`.
+
+
+
+
+## How to RUN using docker 
+- docker build -t ocr-service:latest .
+- docker run -d \
+  --name ocr-service \
+  --env-file .env \
+  -p 4003:4003 \
+  -v "$(pwd)/invoices_json:/app/invoices_json" \
+  -v "$(pwd)/invoices_pdf:/app/invoices_pdf" \
+  ocr-service:latest
+
+### to stop the container use 
+
+- docker stop ocr-service && docker rm ocr-service
+
+
+### to push the service to dockerhub 
+
+- docker login
+
+- docker tag ocr-service:latest <your-dockerhub-username>/ocr-service:latest
+- docker tag ocr-service:latest <your-dockerhub-username>/ocr-service:v1.0.0
+
+- docker push <your-dockerhub-username>/ocr-service:latest
+- docker push <your-dockerhub-username>/ocr-service:v1.0.0
+
+
+### after pushing run it form docker hub 
+
+
+- docker pull <your-dockerhub-username>/ocr-service:latest
+
+- docker run -d \
+  --name ocr-service \
+  --env-file .env \
+  -p 4003:4003 \
+  -v "$(pwd)/invoices_json:/app/invoices_json" \
+  -v "$(pwd)/invoices_pdf:/app/invoices_pdf" \
+  <your-dockerhub-username>/ocr-service:latest
+
+
+  ## Commands to deploy on minikube
+
+# 1. Start Minikube
+minikube start
+
+# 2. Apply the deployment
+kubectl apply -f k8s/k8s-deployment.yaml
+
+# 3. Check if pods are running
+kubectl get pods -n vendoriq
+
+# 4. Check service
+kubectl get svc -n vendoriq
+
+# 5. Get Minikube IP and access the service
+minikube service ocr-service -n vendoriq --url
+
+# 6. Or use port-forward to access locally
+kubectl port-forward -n vendoriq service/ocr-service 4003:4003
+
+-----------
+# View logs
+kubectl logs -n vendoriq -l app=ocr-service -f
+
+# Delete deployment
+kubectl delete -f k8s/k8s-deployment.yaml
+
+# Stop Minikube
+minikube stop
+
+# Delete Minikube cluster
+minikube delete
+--------------
+# Quick One liner Deploy 
+minikube start && kubectl apply -f k8s/k8s-deployment.yaml && kubectl port-forward -n vendoriq service/ocr-service 4003:4003
+
