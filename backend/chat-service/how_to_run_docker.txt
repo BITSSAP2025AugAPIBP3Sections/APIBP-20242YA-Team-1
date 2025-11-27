@@ -1,0 +1,78 @@
+cd backend/chat-service
+
+chmod +x build.sh run.sh
+chmod +x scripts/push-to-dockerhub.sh
+
+# Build the image
+./build.sh
+
+
+# Start service
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f
+
+# Test health endpoint
+curl http://localhost:4002/api/v1/api/health
+
+# Stop service
+docker-compose down
+
+
+cd scripts
+./push-to-dockerhub.sh
+cd ..
+
+
+
+# Update API key in k8s deployment
+nano k8s/k8s-deployment.yaml
+# Replace 'your-actual-gemini-api-key-here' with your real key
+
+# Start Minikube (if not running)
+minikube start --cpus=4 --memory=8192
+
+# Deploy to Kubernetes
+kubectl apply -f k8s/k8s-deployment.yaml
+
+# Wait for pods to be ready
+kubectl wait --for=condition=ready pod -l app=chat-service -n vendoriq --timeout=300s
+
+# Check status
+kubectl get all -n vendoriq
+
+# Get service URL
+minikube service chat-service -n vendoriq --url
+
+# Test health endpoint
+curl $(minikube service chat-service -n vendoriq --url)/api/v1/api/health
+
+# View logs
+kubectl logs -f -l app=chat-service -n vendoriq
+
+
+
+# Horizontal scaling
+kubectl scale deployment chat-service --replicas=5 -n vendoriq
+
+# Vertical scaling
+kubectl set resources deployment chat-service -n vendoriq \
+  --requests=cpu=300m,memory=512Mi \
+  --limits=cpu=1000m,memory=2Gi
+
+# Check status
+kubectl get pods -n vendoriq
+kubectl top pods -n vendoriq
+
+
+
+
+# Delete from Kubernetes
+kubectl delete -f k8s/k8s-deployment.yaml
+
+# Stop Docker Compose
+docker-compose down
+
+# Remove Docker images
+docker rmi vendoriq-chat:latest namangupta07729/vendoriq-chat:v1.0.0
