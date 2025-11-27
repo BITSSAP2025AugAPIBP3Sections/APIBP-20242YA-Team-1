@@ -3,7 +3,7 @@
 ##  Description
 The Authentication Service handles user authentication and authorization using two methods:
 - Google OAuth2 login
-- Email & password–based login and registration
+- auth & password–based login and registration
 
 This service issues secure JWT access & refresh tokens and provides user management APIs backed by MongoDB.
 
@@ -11,7 +11,7 @@ This service issues secure JWT access & refresh tokens and provides user managem
 
 ##  Features
 -  Google OAuth2 login
--  Email/password registration & login
+-  auth/password registration & login
 -  JWT access & refresh token generation
 -  Token rotation & logout
 -  User fetch & delete endpoints
@@ -113,17 +113,17 @@ http://localhost:4001/docs
 ## Run with Docker (prebuilt image)
 
 - Pull the Docker Image
-  - `docker pull gourav094/vendoriq-email-service:latest`
+  - `docker pull gourav094/vendoriq-auth-service:latest`
 - Create `.env` from `env.example` and set values safely (do not commit secrets).
 - Run the container:
-  - `docker run --env-file .env -p 4002:4002 gourav094/vendoriq-email-service:latest`
+  - `docker run --env-file .env -p 4002:4002 gourav094/vendoriq-auth-service:latest`
 - Verify:
   - Open `http://localhost:4002/health`
   - Swagger: `http://localhost:4002/api-docs`
 
 To push any changes and create new image 
 - To build the docker image after changes
-  - Build `docker build -t gourav094/vendoriq-email-service:latest .`
+  - Build `docker build -t gourav094/vendoriq-auth-service:latest .`
   
 --- 
 
@@ -144,6 +144,7 @@ To push any changes and create new image
     kubectl apply -f deployment.yaml
     kubectl apply -f service.yaml 
     ```   
+  ! Note: env variables which are declared under secrets, it should be base64 encoded. May use - `echo -n "field_val" | base64
   - Check pods and services
     ```
     kubectl get pods
@@ -169,9 +170,6 @@ To push any changes and create new image
 -Watch pods in real time: kubectl get pods -w
 
 
-
-
-
 Note: Create k8s-env.yaml file with environment variable
     
 
@@ -183,7 +181,7 @@ Note: Create k8s-env.yaml file with environment variable
 | GET    | /api/v1/auth/google/login    | Generate Google OAuth2 consent URL      |
 | GET    | /auth/callback               | Handle Google OAuth2 callback (unversioned) |
 | POST   | /api/v1/auth/register        | Register new user                       |
-| POST   | /api/v1/auth/login           | Login with email & password             |
+| POST   | /api/v1/auth/login           | Login with auth & password             |
 | POST   | /api/v1/auth/refresh         | Refresh access token                    |
 | POST   | /api/v1/auth/logout          | Logout user                             |
 | GET    | /api/v1/users                | Fetch all users                         |
@@ -193,7 +191,7 @@ Note: Create k8s-env.yaml file with environment variable
 
 ##  Notes
 - Client now treats user IDs as strings (Mongo ObjectId hex). No numeric casting required.
-- Unique indexes enforced on email, username, google_id.
+- Unique indexes enforced on auth, username, google_id.
 - Refresh token rotation implemented on each refresh.
 
 
