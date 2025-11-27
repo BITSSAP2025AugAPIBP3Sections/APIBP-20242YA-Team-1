@@ -59,10 +59,14 @@ On startup you should see logs confirming MongoDB connection and the Swagger URL
   - Open `http://localhost:4002/health`
   - Swagger: `http://localhost:4002/api-docs`
 
+- To build the docker image after changes
+  - Build `docker build -t gourav094/vendoriq-email-service:latest .`
+  
 Notes:
 - Ensure `PORT=4002` (or map ports accordingly).
 - Provide `MONGODB_URI`, `GOOGLE_*`, `JWT_*`, etc., in `.env`.
 - For Compose, use the included `docker-compose.yaml` and run `docker compose up -d`.
+
 
 ## OAuth Flow
 1. Call `GET http://localhost:4002/auth/google` to receive a JSON payload containing a `url` field.

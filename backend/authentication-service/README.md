@@ -110,6 +110,27 @@ http://localhost:4001/docs
 
 ---
 
+## Run with Docker (prebuilt image)
+
+- Pull the Docker Image
+  - `docker pull gourav094/vendoriq-email-service:latest`
+- Create `.env` from `env.example` and set values safely (do not commit secrets).
+- Run the container:
+  - `docker run --env-file .env -p 4002:4002 gourav094/vendoriq-email-service:latest`
+- Verify:
+  - Open `http://localhost:4002/health`
+  - Swagger: `http://localhost:4002/api-docs`
+
+- To build the docker image after changes
+  - Build `docker build -t gourav094/vendoriq-email-service:latest .`
+  
+Notes:
+- Ensure `PORT=4002` (or map ports accordingly).
+- Provide `MONGODB_URI`, `GOOGLE_*`, `JWT_*`, etc., in `.env`.
+- For Compose, use the included `docker-compose.yaml` and run `docker compose up -d`.
+
+--- 
+
 ##  API Endpoints
 
 | Method | Endpoint                     | Description                             |
