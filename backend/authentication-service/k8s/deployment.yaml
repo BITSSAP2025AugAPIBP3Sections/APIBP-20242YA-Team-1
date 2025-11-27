@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+      - name: auth-service
+        image: vendoriq-auth-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 4001
+        env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: PORT
+
+        - name: FRONTEND_URL
+          valueFrom:
+            configMapKeyRef:  
+              name: auth-service-config
+              key: FRONTEND_URL
+
+        - name: MONGO_URI
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: MONGO_URI
+
+        - name: MONGO_DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: MONGO_DB_NAME
+
+        - name: GOOGLE_REDIRECT_URI
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: GOOGLE_REDIRECT_URI
+
+        - name: JWT_ALGORITHM
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: JWT_ALGORITHM
+
+        - name: ACCESS_TOKEN_EXPIRE_MINUTES
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: ACCESS_TOKEN_EXPIRE_MINUTES  
+        
+        - name: REFRESH_TOKEN_EXPIRE_DAYS
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: REFRESH_TOKEN_EXPIRE_DAYS
+        
+        - name: COOKIE_SECURE
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: COOKIE_SECURE
+
+        # Secrets
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secret
+              key: GOOGLE_CLIENT_ID
+
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secret
+              key: GOOGLE_CLIENT_SECRET
+
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secret
+              key: JWT_SECRET
+
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef: 
+              name: auth-service-secret
+              key: SECRET_KEY

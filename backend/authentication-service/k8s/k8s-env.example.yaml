@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+data:
+  PORT: "4001"
+  MONGO_URI: "url"
+  MONGO_DB_NAME: "db_name"
+  GOOGLE_REDIRECT_URI: "redirect_uri"
+  JWT_ALGORITHM: "HS256"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-service-secret
+type: Opaque
+data:
+  GOOGLE_CLIENT_ID: <BASE64_ENCODED_SECRET_HERE>
+  GOOGLE_CLIENT_SECRET: <BASE64_ENCODED_SECRET_HERE>
+  JWT_SECRET: "<BASE64_ENCODED_SECRET_HERE>"
