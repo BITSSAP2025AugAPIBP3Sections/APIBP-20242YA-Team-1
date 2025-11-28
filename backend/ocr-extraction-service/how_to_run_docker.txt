@@ -1,0 +1,129 @@
+# 2. Stop and remove containers
+docker-compose down
+
+# 3. Rebuild and start
+docker-compose up --build -d
+
+# 4. Check logs
+docker-compose logs -f ocr-service
+
+
+
+--------------------------------
+
+to push file in docker 
+
+docker-compose up 
+docker-compose down 
+
+file name is scripts/push-to-docker
+
+chmod +x push-to-dockerhub.sh
+
+./push-to-dockerhub.sh
+
+✅ Successfully pushed to Docker Hub!
+
+Images available at:
+  - namangupta07729/vendoriq-ocr:v1.0.0
+  - namangupta07729/vendoriq-ocr:latest
+
+----------------------------------------
+KUBERNETES 
+
+Step 2: Start Minikube
+minikube start --cpus=4 --memory=8192
+Step 3: Deploy
+kubectl apply -f k8s-deployment.yaml
+
+# Wait for pods to be ready
+kubectl wait --for=condition=ready pod -l app=ocr-service -n vendoriq --timeout=300s
+
+# Check status
+kubectl get all -n vendoriq
+
+# Get service URL
+minikube service ocr-service -n vendoriq --url
+
+# Test health endpoint
+curl $(minikube service ocr-service -n vendoriq --url)/api/v1/api/health
+
+
+**********************************
+USEFUL COMMANDS 
+# View logs
+kubectl logs -f -l app=ocr-service -n vendoriq
+
+# Port forward to localhost
+kubectl port-forward -n vendoriq svc/ocr-service 4003:4003
+# Access at http://localhost:4003
+
+# Scale replicas
+kubectl scale deployment ocr-service --replicas=3 -n vendoriq
+
+# Update deployment
+kubectl rollout restart deployment ocr-service -n vendoriq
+
+# Delete everything
+kubectl delete -f k8s-deployment.yaml
+
+*******************************
+
+# 1. Update API key in file
+nano k8s-deployment.yaml
+
+# 2. Start Minikube
+minikube start --cpus=4 --memory=8192
+
+# 3. Deploy
+kubectl apply -f k8s-deployment.yaml
+
+# 4. Wait for ready
+kubectl wait --for=condition=ready pod -l app=ocr-service -n vendoriq --timeout=300s
+
+# 5. Get URL
+minikube service ocr-service -n vendoriq --url
+
+# 6. Test
+curl $(minikube service ocr-service -n vendoriq --url)/api/v1/api/health
+
+# 7. View logs
+kubectl logs -f -l app=ocr-service -n vendoriq
+
+# 8. Cleanup (when done)
+kubectl delete -f k8s-deployment.yaml
+
+
+
+#############################
+
+FOR HORIZONTAL SCALING 
+# Scale UP to 5 pods
+kubectl scale deployment ocr-service --replicas=5 -n vendoriq
+
+# Scale DOWN to 1 pod
+kubectl scale deployment ocr-service --replicas=1 -n vendoriq
+
+# Check how many pods are running
+kubectl get pods -n vendoriq
+
+# See deployment status
+kubectl get deployment ocr-service -n vendoriq
+
+
+
+
+FOR VERTICAL SACLAING 
+
+# INCREASE resources (more power per pod)
+kubectl set resources deployment ocr-service -n vendoriq \
+  --requests=cpu=500m,memory=1Gi \
+  --limits=cpu=2000m,memory=4Gi
+
+# DECREASE resources (less power per pod)
+kubectl set resources deployment ocr-service -n vendoriq \
+  --requests=cpu=250m,memory=512Mi \
+  --limits=cpu=1000m,memory=2Gi
+
+# Check current resources
+kubectl describe deployment ocr-service -n vendoriq | grep -A 3 "Limits"
