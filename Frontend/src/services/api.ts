@@ -12,7 +12,16 @@ const CHAT_BASE_URL = (import.meta as any).env?.VITE_CHAT_BASE_URL
   || (import.meta as any).env?.VITE_CHAT_API_URL
   || "http://localhost:4005/api/v1";
 
-// Type definitions
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:4000';
+
+export const API_ENDPOINTS = {
+  AUTH: `${API_GATEWAY_URL}/api/v1/auth`,
+  EMAIL: `${API_GATEWAY_URL}/api/v1/email`,
+  OCR: `${API_GATEWAY_URL}/api/v1/ocr`,
+  CHAT: `${API_GATEWAY_URL}/api/v1/chat`,
+  ANALYTICS: `${API_GATEWAY_URL}/api/v1/analytics`,
+};
+
 export interface SyncStatus {
   userId: string;
   email: string;
