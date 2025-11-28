@@ -1,8 +1,10 @@
+from urllib import request
 from fastapi import APIRouter, HTTPException
 from app.services.gemini_client import extract_invoice_json_from_text
 from app.models.ocr_models import GeminiResponse
 
 router = APIRouter(prefix="/ocr", tags=["Invoice OCR"])
+SPREADSHEET_SERVICE_URL = http://localhost:4004/api/v1/sheets/update
 
 @router.post("/text_to_json", response_model=GeminiResponse, summary="Extract structured invoice text to JSON using Gemini")
 def extract_json_from_text(text: str):
@@ -22,6 +24,20 @@ def extract_json_from_text(text: str):
                 raise HTTPException(status_code=400, detail=error_msg)
             else:
                 raise HTTPException(status_code=500, detail=error_msg)
+            # -----------------------------
+        # CALL SPREADSHEET SERVICE HERE
+        # -----------------------------
+        payload = {
+            "fromDrive": True,
+            "data": result  # JSON produced from OCR
+        }
+
+        try:
+            response = request.post(SPREADSHEET_SERVICE_URL, json=payload)
+            print("Update endpoint response:", response.text)
+        except Exception as call_err:
+            print("Failed to call update service:", call_err)
+
         return result
     except HTTPException as e:
         raise e

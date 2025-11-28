@@ -38,7 +38,7 @@ export const processDriveVendors = async () => {
   // 1. find root folder invoiceAutomation
   const rootFolder = await findFolder(drive, "invoiceAutomation");
   if (!rootFolder) {
-    return { success: false, message: "Root folder 'invoiceAutomation' not found", processed: [] };
+    return { success: false, message: "Root folder 'invoiceAutomation' not found. Please sync your email", processed: [] };
   }
 
   // 2. list vendor folders inside root
