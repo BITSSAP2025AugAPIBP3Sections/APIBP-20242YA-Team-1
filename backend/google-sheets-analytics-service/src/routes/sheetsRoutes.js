@@ -8,64 +8,86 @@ const upload = multer({ storage: multer.memoryStorage() });
 /**
  * @swagger
  * tags:
- *   name: Sheets
- *   description: Google Sheets Analytics Service APIs
+ *   - name: Sheets
+ *     description: Google Sheets Data Sync & Processing APIs
+ *   - name: Analytics
+ *     description: Finance Insights & Spend Analysis
  */
 
 /**
  * @swagger
  * /api/v1/sheets/update:
  *   post:
- *     summary: Upload invoice data or sync data from Google Drive
- *     description: |
- *       - Upload invoice JSON using file upload or JSON body  
- *       - Or send `{ "fromDrive": true }` to sync all vendor folders from Google Drive  
+ *     summary: Process invoice JSON or trigger Google Drive sync
+ *     operationId: processInvoiceData
  *     tags: [Sheets]
+ *     description: |
+ *       This API is called automatically by the OCR extraction service after reading invoices.  
+ *       It supports:
+ *       - Sending single or multiple invoice JSON objects for updating Google Sheets.
+ *       - Triggering Drive sync to process new vendor folders.
+ *
+ *       **Example call from OCR service**
+ *       ```bash
+ *       POST /api/v1/sheets/update
+ *       Content-Type: application/json
+ *
+ *       {
+ *         "invoices": [
+ *           {
+ *             "invoiceNumber": "INV-1234",
+ *             "vendorName": "Amazon",
+ *             "totalAmount": 1499.50,
+ *             "invoiceDate": "2024-10-02"
+ *           }
+ *         ]
+ *       }
+ *       ```
+ *
+ *       **Drive sync trigger**
+ *       ```bash
+ *       POST /api/v1/sheets/update
+ *       {
+ *         "fromDrive": true
+ *       }
+ *       ```
+ *
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: Upload a JSON file containing invoices
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               fromDrive:
+ *                 type: boolean
+ *                 description: Trigger Google Drive folder scan and sheet update
+ *               invoices:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                 description: Invoice JSON payload to append to sheet
  *             example:
- *               fromDrive: true
+ *               invoices:
+ *                 - invoiceNumber: "INV-1234"
+ *                   vendorName: "Amazon"
+ *                   totalAmount: 1499.50
+ *                   invoiceDate: "2024-10-02"
+ *
  *     responses:
  *       200:
- *         description: Drive Sync completed successfully
+ *         description: Sheets updated successfully (Drive Sync or Invoice Append)
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 result:
- *                   type: object
- *       201:
- *         description: Invoice JSON appended successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 result:
- *                   type: object
+ *             example:
+ *               success: true
+ *               message: Invoice JSON processed and appended to sheet
+ *               result:
+ *                 recordsAdded: 1
  *       400:
- *         description: Bad request — missing file or data
+ *         description: Validation error or missing request body
  *       500:
  *         description: Internal Server Error
  */
@@ -74,110 +96,20 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @swagger
  * /api/v1/sheets/analytics:
  *   get:
- *     summary: Get analytics data from Google Sheets
- *     description: Fetches total spend, insights, trends, vendor analytics, and category-wise breakdown directly from Google Sheets.
+ *     summary: Retrieve spending analytics & business insights
+ *     operationId: getAnalyticsInsights
  *     tags: [Analytics]
  *     responses:
  *       200:
- *         description: Analytics retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Analytics retrieved successfully
- *                 data:
- *                   type: object
- *                   properties:
- *                     totalRecords:
- *                       type: integer
- *                       example: 42
- *                     totalAmount:
- *                       type: number
- *                       example: 5861.73
- *                     insights:
- *                       type: object
- *                       properties:
- *                         highestSpend:
- *                           type: object
- *                           properties:
- *                             vendor:
- *                               type: string
- *                               example: Amazon
- *                             amount:
- *                               type: number
- *                               example: 5000
- *                         averageInvoice:
- *                           type: number
- *                           example: 732.72
- *                         costReduction:
- *                           type: number
- *                           example: 0
- *                         avgPaymentTime:
- *                           type: number
- *                           example: 12.4
- *                     monthlyTrend:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                             example: Jan
- *                           value:
- *                             type: number
- *                             example: 1500
- *                     quarterlyTrend:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                             example: Q1 2024
- *                           value:
- *                             type: number
- *                             example: 4500
- *                     topVendors:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                             example: Amazon
- *                           value:
- *                             type: number
- *                             example: 5000
- *                     spendByCategory:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           name:
- *                             type: string
- *                             example: Office Supplies
- *                           value:
- *                             type: number
- *                             example: 1200
- *                     expensesByVendor:
- *                       type: object
- *                       example:
- *                         Amazon: 5000
- *                         Flipkart: 861.73
+ *         description: Analytics data fetched successfully
  */
 
 /**
  * @swagger
  * /api/v1/sheets/export:
  *   get:
- *     summary: Export sheet data in CSV, XLSX, or JSON format
- *     description: Returns a downloadable exported file of analytics
+ *     summary: Export sheet analytics in CSV/XLSX/JSON format
+ *     operationId: exportAnalyticsFile
  *     tags: [Sheets]
  *     parameters:
  *       - name: format
@@ -186,28 +118,14 @@ const upload = multer({ storage: multer.memoryStorage() });
  *           type: string
  *           enum: [csv, xlsx, json]
  *           default: csv
- *         description: Format of exported file
  *     responses:
  *       200:
  *         description: File exported successfully
- *         content:
- *           application/octet-stream:
- *             schema:
- *               type: string
- *               format: binary
- *       500:
- *         description: Failed to export file
  */
 
+
 router.post("/update", upload.single("file"), updateSheet);
-router.get("/analytics", async (req, res) => {
-    const data = await fetchAnalyticsData();
-    res.json({
-      success: true,
-      message: "Analytics retrieved successfully",
-      data,
-    });
-  });
+router.get("/analytics", getAnalytics);
 router.get("/export", exportData);
 
 export default router;
