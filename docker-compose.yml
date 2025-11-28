@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # Authentication Service
+  authentication-service:
+    build:
+      context: ./backend/authentication-service
+      dockerfile: Dockerfile
+    container_name: vendoriq-auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    env_file:
+      - ./backend/authentication-service/.env
+    environment:
+      - PORT=4001
+    networks:
+      - vendoriq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4001/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Email Storage Service
+  email-storage-service:
+    build:
+      context: ./backend/email-storage-service
+      dockerfile: Dockerfile
+    container_name: vendoriq-email-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    env_file:
+      - ./backend/email-storage-service/.env
+    environment:
+      - PORT=4002
+      - OCR_SERVICE_BASE_URL=http://ocr-extraction-service:4003
+    depends_on:
+      - authentication-service
+    networks:
+      - vendoriq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # OCR Extraction Service
+  ocr-extraction-service:
+    build:
+      context: ./backend/ocr-extraction-service
+      dockerfile: Dockerfile
+    container_name: vendoriq-ocr-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    env_file:
+      - ./backend/ocr-extraction-service/.env
+    volumes:
+      - ocr_invoices_json:/app/invoices_json
+      - ocr_invoices_pdf:/app/invoices_pdf
+    networks:
+      - vendoriq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/api/v1/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Chat Service (RAG)
+  chat-service:
+    build:
+      context: ./backend/chat-service
+      dockerfile: Dockerfile
+    container_name: vendoriq-chat-service
+    restart: unless-stopped
+    ports:
+      - "4005:4005"
+    env_file:
+      - ./backend/chat-service/.env
+    volumes:
+      - chat_vectordb:/app/data/vectordb
+      - ./backend/chat-service/sample-data:/app/sample-data
+    networks:
+      - vendoriq-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4005/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: vendoriq-frontend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - VITE_AUTH_SERVICE_URL=http://localhost:4001
+      - VITE_EMAIL_SERVICE_URL=http://localhost:4002
+      - VITE_OCR_SERVICE_URL=http://localhost:4003
+      - VITE_CHAT_BASE_URL=http://localhost:4005/api/v1
+    networks:
+      - vendoriq-network
+
+networks:
+  vendoriq-network:
+    driver: bridge
+
+volumes:
+  ocr_invoices_json:
+    driver: local
+  ocr_invoices_pdf:
+    driver: local
+  chat_vectordb:
+    driver: local
