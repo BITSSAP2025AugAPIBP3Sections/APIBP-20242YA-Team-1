@@ -4,7 +4,7 @@ from app.services.gemini_client import extract_invoice_json_from_text
 from app.models.ocr_models import GeminiResponse
 
 router = APIRouter(prefix="/ocr", tags=["Invoice OCR"])
-SPREADSHEET_SERVICE_URL = http://localhost:4004/api/v1/sheets/update
+SPREADSHEET_SERVICE_URL = "http://localhost:4004/api/v1/sheets/update"
 
 @router.post("/text_to_json", response_model=GeminiResponse, summary="Extract structured invoice text to JSON using Gemini")
 def extract_json_from_text(text: str):
