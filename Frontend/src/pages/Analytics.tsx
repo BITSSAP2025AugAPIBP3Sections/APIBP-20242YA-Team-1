@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { DashboardMetricCard } from "@/components/ui/DashboardMetricCard";
-import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, LucideIcon, Mail, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, IndianRupee, BarChart3, LucideIcon, Mail, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 interface Insight {
   title: string;
@@ -19,37 +21,15 @@ interface Insight {
   changeType?: "positive" | "negative" | "neutral";
 }
 
-interface AnalyticsApiResponse {
-  success?: boolean;
-  insights: {
-    highestSpend: { vendor: string; amount: number };
-    averageInvoice: number;
-    costReduction: number;
-    avgPaymentTime: number;
-    totalSpend?: number;
-    totalInvoices?: number;
-    vendorCount?: number;
-  };
-  monthlyTrend: { name: string; value: number }[];
-  topVendors: { name: string; value: number }[];
-  spendByCategory: { name: string; value: number }[];
-  quarterlyTrend: { name: string; value: number }[];
-  period?: string;
-  message?: string;
-  cached?: boolean;
-  llmSummary?: string;
-}
-
 export default function Analytics() {
-  const [analytics, setAnalytics] = useState<AnalyticsApiResponse | null>(null);
-  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("year");
-  const [error, setError] = useState<string | null>(null);
-  const [slow, setSlow] = useState(false);
   const [expandedVendors, setExpandedVendors] = useState(false);
-  const CHAT_BASE = (import.meta as any).env?.VITE_CHAT_BASE_URL || "http://localhost:4005";
+  const queryClient = useQueryClient();
+  
+  // Use React Query hook for analytics data
+  const { data: analytics, isLoading, isError, error, isFetching, dataUpdatedAt } = useAnalytics(period);
 
-  // Memoized insight cards ALWAYS invoked (safe hook ordering)
+  // Memoized insight cards
   const insights: Insight[] = useMemo(() => {
     const data = analytics;
     if (!data || data.success === false) {
@@ -67,12 +47,6 @@ export default function Analytics() {
         title: "Average Invoice (INR)",
         value: `₹${data.insights.averageInvoice.toLocaleString()}`,
         icon: IndianRupee,
-        changeType: "positive",
-      },
-      {
-        title: "Cost Reduction",
-        value: `${data.insights.costReduction.toFixed(1)}%`,
-        icon: TrendingDown,
         changeType: "positive",
       },
       {
@@ -102,41 +76,31 @@ export default function Analytics() {
     ];
   }, [analytics]);
 
-  useEffect(() => {
-    let abort = false;
-    setError(null);
-    setSlow(false);
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // Optionally include userId if available in localStorage for per-user cache
-        const userId = localStorage.getItem("userId");
-        const url = userId ? `${CHAT_BASE}/api/v1/analytics?period=${period}&userId=${userId}` : `${CHAT_BASE}/api/v1/analytics?period=${period}`;
-        const res = await fetch(url);
-        const data: AnalyticsApiResponse = await res.json();
-        if (!abort) setAnalytics(data);
-      } catch (err) {
-        if (!abort) {
-          console.error("Failed to fetch analytics:", err);
-          setError("Failed to load analytics. Please retry.");
-          setAnalytics(null);
-        }
-      } finally {
-        if (!abort) setLoading(false);
-      }
-    }
-    const slowTimer = setTimeout(() => { if (!abort) setSlow(true); }, 800);
-    fetchData();
-    return () => { abort = true; clearTimeout(slowTimer); };
-  }, [period, CHAT_BASE]);
+  // Handle manual sync
+  const handleSync = () => {
+    queryClient.invalidateQueries({ queryKey: ["analytics", period] });
+  };
 
-  if (loading) {
+  // Format last sync time
+  const formatLastSync = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
         <div className="flex flex-col items-center gap-6">
           <div className="h-16 w-16 rounded-full border-4 border-t-transparent animate-spin mb-4" style={{ borderColor: '#e5e7eb' }} />
           <h2 className="text-2xl font-bold text-muted-foreground">
-            {slow ? "Hang tight! Your analytics are being computed..." : "Loading your analytics data..."}
+            Loading your analytics data...
           </h2>
           <p className="text-lg text-muted-foreground text-center max-w-xl">
             This may take a few moments if you have a large number of invoices or vendors. Please wait while we gather your insights.
@@ -145,7 +109,8 @@ export default function Analytics() {
       </div>
     );
   }
-  if (error) {
+
+  if (isError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
         <div className="flex flex-col items-center gap-6">
@@ -158,10 +123,15 @@ export default function Analytics() {
           <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
             <strong>Tip:</strong> After connecting your email, make sure to sync to see your latest analytics. If you face issues, retry syncing or check your connection status in Settings.
           </div>
+          <Button onClick={handleSync} variant="outline" size="lg">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </div>
     );
   }
+
   if (!analytics) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
@@ -184,43 +154,63 @@ export default function Analytics() {
       </div>
     );
   }
+
   if (analytics.success === false) {
     return <p className="text-sm text-red-600">{analytics.message || "Analytics unavailable"}</p>;
   }
 
-  // Map API insights to DashboardMetricCard format
-
   return (
     <div className="space-y-8 max-w-full overflow-x-hidden px-2 md:px-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-semibold">Analytics</h1>
-          <p className="mt-2 text-muted-foreground">
-            Deep insights into your spending patterns
-          </p>
-          {analytics.llmSummary && (
-            <div className="mt-3 text-sm leading-relaxed bg-muted/40 p-3 rounded border">
+      <div className="flex flex-col md:items- md:justify-between gap-4">
+        <div className="flex flex-row items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-semibold">Analytics</h1>
+            <p className="mt-2 text-muted-foreground text-xs md:text-sm">
+              Deep insights into your spending patterns
+            </p>
+            {dataUpdatedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last synced: {formatLastSync(dataUpdatedAt)}
+              {isFetching && <span className="ml-2 text-blue-600">• Updating...</span>}
+            </p>
+            )}
+          </div>
+          <div className="flex gap-2  ">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={isFetching}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            {isFetching ? "Syncing..." : "Sync"}
+          </Button>
+          <Select value={period} onValueChange={(val) => setPeriod(val)}>
+            <SelectTrigger className="w-[180px]" data-testid="select-time-period">
+              <SelectValue placeholder="Time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="quarter">This Quarter</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
+              <SelectItem value="all">All Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+          
+        </div>
+        {analytics.llmSummary && (
+            <div className="mt-3 text-sm leading-relaxed bg-muted/40 p-3 rounded-lg border">
               <strong className="block mb-1">AI Summary:</strong>
               <span>{analytics.llmSummary}</span>
             </div>
           )}
-        </div>
-        <Select value={period} onValueChange={(val) => setPeriod(val)}>
-          <SelectTrigger className="w-[180px]" data-testid="select-time-period">
-            <SelectValue placeholder="Time period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="quarter">This Quarter</SelectItem>
-            <SelectItem value="year">This Year</SelectItem>
-            <SelectItem value="all">All Time</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Metric Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 auto-rows-fr">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
         {insights.map((insight) => (
           <DashboardMetricCard key={insight.title} {...insight} />
         ))}
@@ -235,6 +225,7 @@ export default function Analytics() {
         <AnalyticsChart title="Spend by Category" type="pie" data={analytics.spendByCategory || []} />
         <AnalyticsChart title="Quarterly Growth" type="bar" data={analytics.quarterlyTrend || []} />
       </div>
+
       {/* Responsive overflow table for long vendor list */}
       {analytics.topVendors?.length > 0 ? (
         <div className="bg-card border rounded-md p-4">

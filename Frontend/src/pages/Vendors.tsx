@@ -1,59 +1,52 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Building2, RefreshCw, Folder, FileText, Calendar, Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import api, { type Vendor } from "@/services/api";
+import { useVendors } from "@/hooks/use-vendors";
 
 const Vendors = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [userId, setUserId] = useState(() => localStorage.getItem("tempUserId") || "690c7d0ee107fb31784c1b1b");
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [vendorPage, setVendorPage] = useState(1);
+
+  // Use React Query hook for vendors data
+  const { data, isLoading, isError, error, isFetching, dataUpdatedAt } = useVendors(userId);
+  const vendors = data?.vendors || [];
+  const total = data?.total || 0;
 
   useEffect(() => {
     localStorage.setItem("tempUserId", userId);
   }, [userId]);
 
+  // Show success toast when data is loaded
   useEffect(() => {
-    if (userId && /^[a-f0-9]{24}$/i.test(userId)) {
-      fetchVendors();
+    if (data && !isLoading && !isFetching) {
+      if (total > 0) {
+        toast({
+          title: "✓ Vendors Loaded Successfully",
+          description: `Found ${total} vendor ${total === 1 ? 'folder' : 'folders'} in your Google Drive`,
+        });
+      }
     }
-  }, [userId]);
+  }, [data, isLoading, isFetching]);
 
-  const fetchVendors = async () => {
-    if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) {
-      toast({
-        title: "⚠️ Invalid User ID Format",
-        description: "User ID must be exactly 24 characters (hexadecimal). Example: 690c7d0ee107fb31784c1b1b",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data, response } = await api.getVendors(userId);
-
-      if (response.ok) {
-        setVendors(data.vendors || []);
-        if (data.total > 0) {
-          toast({
-            title: "✓ Vendors Loaded Successfully",
-            description: `Found ${data.total} vendor ${data.total === 1 ? 'folder' : 'folders'} in your Google Drive`,
-          });
-        } else {
-          toast({
-            title: "No Vendors Found",
-            description: "No vendor folders exist yet. Sync emails first to create vendor folders.",
-            variant: "destructive",
-          });
-        }
+  // Show error toast
+  useEffect(() => {
+    if (isError) {
+      const errorMessage = error?.message || "Unknown error";
+      if (errorMessage.includes("Invalid User ID")) {
+        toast({
+          title: "⚠️ Invalid User ID Format",
+          description: "User ID must be exactly 24 characters (hexadecimal). Example: 690c7d0ee107fb31784c1b1b",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "⚠️ Unable to Load Vendors",
@@ -61,15 +54,12 @@ const Vendors = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
-      toast({
-        title: "🔌 Connection Failed",
-        description: "Cannot reach the email service. Please ensure the backend is running on port 4002.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
     }
+  }, [isError, error]);
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["vendors", userId] });
   };
 
   const viewInvoices = (vendorId: string, vendorName: string) => {
@@ -79,11 +69,12 @@ const Vendors = () => {
   const filteredVendors = vendors.filter(vendor =>
     vendor.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
   // Pagination for vendors (7 per page)
   const VENDOR_PAGE_SIZE = 7;
-  const [vendorPage, setVendorPage] = useState(1);
   const vendorTotalPages = Math.max(1, Math.ceil(filteredVendors.length / VENDOR_PAGE_SIZE));
   const paginatedVendors = filteredVendors.slice((vendorPage - 1) * VENDOR_PAGE_SIZE, vendorPage * VENDOR_PAGE_SIZE);
+  
   useEffect(() => {
     if (vendorPage > vendorTotalPages) setVendorPage(1);
   }, [filteredVendors.length, vendorTotalPages, vendorPage]);
@@ -98,6 +89,19 @@ const Vendors = () => {
     });
   };
 
+  // Format last sync time
+  const formatLastSync = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -107,40 +111,21 @@ const Vendors = () => {
           <p className="text-muted-foreground mt-1">
             View all vendor folders from Google Drive
           </p>
+          {dataUpdatedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last synced: {formatLastSync(dataUpdatedAt)}
+              {isFetching && <span className="ml-2 text-blue-600">• Updating...</span>}
+            </p>
+          )}
         </div>
-        <Button onClick={fetchVendors} disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
+        <Button onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          {isFetching ? "Syncing..." : "Refresh"}
         </Button>
       </div>
 
-      {/* Configuration Card */}
-      {/* <Card className="hidden">
-        <CardHeader>
-          <CardTitle>Configuration</CardTitle>
-          <CardDescription>Set your user ID to fetch vendor folders</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="userId">User ID (MongoDB ObjectId)</Label>
-            <div className="flex gap-2">
-              <Input
-                id="userId"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                placeholder="690c7d0ee107fb31784c1b1b"
-                className="font-mono"
-              />
-              <Button onClick={fetchVendors} disabled={isLoading}>
-                Load Vendors
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Must be a valid 24-character hexadecimal MongoDB ObjectId
-            </p>
-          </div>
-        </CardContent>
-      </Card> */}
+      {/* Configuration Card - Hidden */}
+      {/* ...existing configuration card comment... */}
 
       {/* Search Bar */}
       {vendors.length > 0 && (
