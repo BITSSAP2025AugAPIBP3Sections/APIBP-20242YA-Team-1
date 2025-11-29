@@ -5,7 +5,6 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import logger, { requestLogger } from "./utils/logger.js";
-import {jwtAuth, decodeForHealth} from "./middleware/jwtAuth.js";
 
 //imports for swagger documentation
 import swaggerUi from "swagger-ui-express";
@@ -29,7 +28,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(requestLogger);
-app.use(jwtAuth);
 
 //db connection
 connectDB();
@@ -71,7 +69,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Health check Route
 app.get("/health", (req, res) => {
-   res.json({status:"OK", service: "email-storage-service", auth: decodeForHealth(req.headers.authorization)});
+   res.json({status:"OK", service: "email-storage-service"});
 });
 
 /**

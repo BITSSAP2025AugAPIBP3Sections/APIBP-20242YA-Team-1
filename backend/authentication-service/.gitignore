@@ -7,3 +7,4 @@ __pycache__/
 client_secret.example.json
 client_secret.json
 k8s/k8s-env.yaml
+.env
