@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,53 +17,41 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import api, { type ScheduledJob } from "@/services/api";
+import { useScheduledJobs } from "@/hooks/use-scheduled-jobs";
+import api from "@/services/api";
 
 const ScheduledJobs = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [userId, setUserId] = useState(() => localStorage.getItem("tempUserId") || "690c7d0ee107fb31784c1b1b");
-  const [jobs, setJobs] = useState<ScheduledJob[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [editingJob, setEditingJob] = useState<string | null>(null);
   const [editFrequency, setEditFrequency] = useState<"hourly" | "daily" | "weekly">("daily");
+
+  // Use React Query hook for scheduled jobs data
+  const { data, isLoading, isError, error, isFetching, dataUpdatedAt } = useScheduledJobs(userId);
+  const jobs = data?.jobs || [];
 
   useEffect(() => {
     localStorage.setItem("tempUserId", userId);
   }, [userId]);
 
+  // Show error toast
   useEffect(() => {
-    if (userId && /^[a-f0-9]{24}$/i.test(userId)) {
-      fetchScheduledJobs();
-    }
-  }, [userId]);
-
-  const fetchScheduledJobs = async () => {
-    if (!userId || !/^[a-f0-9]{24}$/i.test(userId)) {
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { data, response } = await api.getScheduledJobs(userId);
-
-      if (response.ok) {
-        setJobs(data.jobs || []);
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to fetch scheduled jobs",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
+    if (isError) {
+      const errorMessage = error?.message || "Unknown error";
       toast({
-        title: "Network Error",
-        description: "Could not connect to email service",
+        title: "Error",
+        description: errorMessage.includes("Invalid User ID") 
+          ? "User ID must be exactly 24 characters (hexadecimal)"
+          : "Failed to fetch scheduled jobs",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  }, [isError, error, toast]);
+
+  // Handle manual refresh
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["scheduledJobs", userId] });
   };
 
   const cancelJob = async (jobId: string) => {
@@ -74,7 +63,8 @@ const ScheduledJobs = () => {
           title: "Success",
           description: "Scheduled job cancelled successfully",
         });
-        fetchScheduledJobs();
+        // Invalidate cache to refetch updated jobs list
+        queryClient.invalidateQueries({ queryKey: ["scheduledJobs", userId] });
       } else {
         toast({
           title: "Error",
@@ -100,7 +90,7 @@ const ScheduledJobs = () => {
     return colors[frequency as keyof typeof colors] || "bg-gray-500";
   };
 
-  const formatNextRun = (job: ScheduledJob) => {
+  const formatNextRun = (job: typeof jobs[0]) => {
     // Calculate next run based on frequency and creation time
     const created = new Date(job.createdAt);
     const now = new Date();
@@ -149,6 +139,19 @@ const ScheduledJobs = () => {
     return `in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
   };
 
+  // Format last sync time
+  const formatLastSync = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   return (
     <div className="flex-1 space-y-6 p-8 pt-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -157,10 +160,16 @@ const ScheduledJobs = () => {
           <p className="text-muted-foreground">
             Manage your automated email fetch schedules
           </p>
+          {dataUpdatedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last synced: {formatLastSync(dataUpdatedAt)}
+              {isFetching && <span className="ml-2 text-blue-600">• Updating...</span>}
+            </p>
+          )}
         </div>
-        <Button onClick={fetchScheduledJobs} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
+        <Button onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+          {isFetching ? "Syncing..." : "Refresh"}
         </Button>
       </div>
 
