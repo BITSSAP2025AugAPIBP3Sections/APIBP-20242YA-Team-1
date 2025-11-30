@@ -15,7 +15,23 @@ const FRONTEND_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:8000';
 // Security & parsing
 app.use(helmet());
 app.use(cookieParser());
-app.use(express.json());
+
+// IMPORTANT: Don't parse body for proxy routes - let the target service handle it
+// Only parse body for direct routes (/, /health)
+const shouldParseBody = (req, res, next) => {
+  // Skip body parsing for proxied routes
+  if (req.path.startsWith('/auth') || 
+      req.path.startsWith('/email') || 
+      req.path.startsWith('/chat') || 
+      req.path.startsWith('/ocr') || 
+      req.path.startsWith('/analytics')) {
+    return next();
+  }
+  // Parse body for other routes
+  express.json()(req, res, next);
+};
+
+app.use(shouldParseBody);
 app.use(express.urlencoded({ extended: true }));
 
 // CORS (allow credentials for httpOnly cookies)
