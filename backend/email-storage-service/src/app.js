@@ -157,7 +157,12 @@ app.use("/api/v1", analyticsRoutes);
  * SERVER STARTUP
  * ============================================================================
  */
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
     logger.info(`Email Storage Service is running on port ${config.port}`);
     logger.info(`Swagger docs available at http://localhost:${config.port}/api-docs`);
 });
+
+// Increase server timeout to 2 minutes to handle long-running operations
+server.timeout = 120000; // 2 minutes
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 125000; // Slightly more than keepAliveTimeout

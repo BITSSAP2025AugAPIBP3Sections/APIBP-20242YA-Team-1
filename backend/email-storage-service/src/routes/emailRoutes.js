@@ -1,5 +1,5 @@
 import express from "express";
-import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController } from "../controllers/emailController.js";
+import { fetchEmailsController, getScheduledJobsController, cancelScheduledJobController, getJobStatusController } from "../controllers/emailController.js";
 import { getInvoicesByVendor, getVendorsByUser, getVendorMaster } from "../controllers/driveController.js";
 import { getUserSyncStatus, resetUserSyncStatus, disconnectGoogleAccount } from "../controllers/userController.js";
 
@@ -40,6 +40,15 @@ const router = express.Router();
  *   }
  */
 router.post("/email/fetch", fetchEmailsController);
+
+/**
+ * @route   GET /api/v1/email/jobs/:jobId
+ * @desc    Check the status of an email fetch job
+ * @access  Public
+ * @returns {200} Success - Job status with result or error
+ * @returns {404} Not Found - Job not found
+ */
+router.get("/email/jobs/:jobId", getJobStatusController);
 
 /**
  * @route   GET /api/v1/drive/users/:userId/vendors

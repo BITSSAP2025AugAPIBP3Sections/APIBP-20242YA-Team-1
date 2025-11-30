@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL;
-const API_BASE = `${AUTH_SERVICE_URL}/api/v1`; // versioned base
 
-// Simple user shape
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:4000";
+// Auth endpoints now routed through gateway prefix: /auth/...
+const AUTH_BASE = `${API_GATEWAY_URL}/auth/api/v1/auth`;
+
 export interface User {
   id: string;
   username: string;
@@ -31,18 +32,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ============================
+  // Fetch current user (auth/me)
+  // ============================
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const resp = await fetch(`${API_BASE}/auth/me`, {
-          credentials: 'include', // sends cookies
+        const resp = await fetch(`${AUTH_BASE}/me`, {
+          credentials: 'include',
         });
+
         const contentType = resp.headers.get('content-type') || '';
         if (!contentType.includes('application/json')) {
-          console.warn('Session check returned non-JSON (likely HTML redirect). Treating as unauthenticated.');
           setUser(null);
           return;
         }
+
         const data = await resp.json();
         if (data.isAuthenticated && data.user) {
           setUser(data.user);
@@ -56,14 +61,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(false);
       }
     };
+
     fetchUser();
   }, []);
 
+  // ============================
+  // Register
+  // ============================
   const signUp: AuthContextType['signUp'] = async (email, password, fullName) => {
     setIsLoading(true);
     setError(null);
+
     try {
-      const resp = await fetch(`${API_BASE}/auth/register`, {
+      const resp = await fetch(`${AUTH_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -75,11 +85,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { success: false, error: data.error || 'Registration failed' };
       }
 
-      if (data.user) {
-        setUser(data.user);
-      }
-
+      if (data.user) setUser(data.user);
       return { success: true };
+
     } catch (e) {
       return { success: false, error: 'Network error' };
     } finally {
@@ -87,28 +95,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // ============================
+  // Login
+  // ============================
   const signIn: AuthContextType['signIn'] = async (email, password) => {
     setIsLoading(true);
     setError(null);
+
     try {
-      const resp = await fetch(`${API_BASE}/auth/login`, {
+      const resp = await fetch(`${AUTH_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email, password })
       });
+
       const data = await resp.json();
+
       if (!resp.ok) {
         const err = data.error || 'Invalid credentials';
         setError(err);
         return { success: false, error: err };
       }
 
-      if (data.user) {
-        setUser(data.user);
-      } 
-
+      if (data.user) setUser(data.user);
       return { success: true };
+
     } catch (e) {
       const err = 'Login failed';
       setError(err);
@@ -118,36 +130,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // ============================
+  // Google OAuth
+  // ============================
   const signInWithGoogle: AuthContextType['signInWithGoogle'] = async () => {
     try {
-      const response = await fetch(`${API_BASE}/auth/google/login`, {
+      // Gateway -> Auth service 
+      const resp = await fetch(`${AUTH_BASE}/google/login`, {
         credentials: 'include',
       });
-      const contentType = response.headers.get('content-type') || '';
+
+      const contentType = resp.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
-        return { success: false, error: 'Unexpected response (non-JSON) from auth/login' };
+        return { success: false, error: 'Unexpected response from Google login' };
       }
-      const data = await response.json();
+
+      const data = await resp.json();
       if (data.auth_url) {
-        window.location.href = data.auth_url;
+        window.location.href = data.auth_url; // Redirect to Google
         return { success: true };
       }
-      return { success: false, error: 'Google auth URL not received' };
+
+      return { success: false, error: 'Google auth URL missing' };
+
     } catch (e) {
       console.error('Google login error:', e);
       return { success: false, error: 'Network error during Google login' };
     }
   };
 
+  // ============================
+  // Reset password (future)
+  // ============================
   const resetPassword: AuthContextType['resetPassword'] = async (email) => {
-    return { success: true }; 
+    return { success: true };
   };
 
+  // ============================
+  // Logout
+  // ============================
   const signOut = async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await fetch(`${AUTH_BASE}/logout`, {
         method: 'POST',
-        credentials: 'include', 
+        credentials: 'include',
       });
     } catch (e) {
       console.warn('Logout request failed:', e);
@@ -157,7 +183,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, signUp, signIn, resetPassword, signOut, signInWithGoogle }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        error,
+        signUp,
+        signIn,
+        resetPassword,
+        signOut,
+        signInWithGoogle
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -165,6 +202,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };

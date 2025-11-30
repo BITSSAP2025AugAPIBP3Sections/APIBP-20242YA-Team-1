@@ -185,10 +185,10 @@ const EmailSync = () => {
     }
 
     setIsFetching(true);
-    setFetchProgress({ current: 0, total: 0, message: "Starting email fetch..." });
+    setFetchProgress({ current: 0, total: 100, message: "Starting email fetch..." });
     addLog("processing", `Starting email fetch from ${fromDate}...`);
 
-    const body: any = {
+    const body: FetchEmailsRequest = {
       userId,
       fromDate: new Date(fromDate).toISOString(), // send full ISO with time
       forceSync,
@@ -200,74 +200,41 @@ const EmailSync = () => {
       addLog("info", `Filtering by vendor emails: ${vendorEmails}`);
     }
 
-    // Clear any existing progress interval
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-
-    // Simulate progress (since backend processes all at once)
-    progressIntervalRef.current = setInterval(() => {
-      setFetchProgress(prev => {
-        if (prev.total === 0) return { current: 0, total: 100, message: "Connecting to Gmail..." };
-        if (prev.current < 90) {
-          return { 
-            current: prev.current + 2, 
-            total: 100, 
-            message: "Fetching and processing emails..." 
-          };
-        }
-        return prev;
-      });
-    }, 1000);
-
     try {
-      const { data, response } = await api.fetchEmails(body as FetchEmailsRequest);
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
+      // Use the new polling mechanism
+      setFetchProgress({ current: 10, total: 100, message: "Job started, polling for updates..." });
       
-      if (!contentType || !contentType.includes("application/json")) {
-        // Not JSON - likely rate limit or error HTML
-        const text = await response.text();
-        addLog("error", `Server returned non-JSON response: ${text.substring(0, 200)}`);
-        toast({
-          title: "Server Error",
-          description: text.includes("Too many") ? "Rate limit exceeded. Please wait before retrying." : "Server returned an invalid response",
-          variant: "destructive",
-        });
-        return;
-      }
+      const result = await api.fetchEmailsWithPolling(body, (status) => {
+        // Progress callback
+        addLog("info", `Job status: ${status.status}`);
+        
+        if (status.status === "processing") {
+          setFetchProgress({ current: 50, total: 100, message: "Processing emails..." });
+        }
+      });
 
       setFetchProgress({ current: 100, total: 100, message: "Processing complete!" });
 
-      if (response.ok) {
-        // Show summary
-        const totalProcessed = data.result?.totalProcessed || 0;
-        const filesUploaded = data.result?.filesUploaded || 0;
+      if (result.status === "completed" && result.result) {
+        const totalProcessed = result.result.totalProcessed || 0;
+        const filesUploaded = result.result.filesUploaded || 0;
         
-        addLog("complete", `✅ EMAIL FETCH COMPLETED SUCCESSFULLY`);
-        addLog("info", `📧 Total emails processed: ${totalProcessed}`);
-        addLog("info", `📎 Files uploaded: ${filesUploaded}`);
+        addLog("complete", `EMAIL FETCH COMPLETED SUCCESSFULLY`);
+        addLog("info", `Total emails processed: ${totalProcessed}`);
+        addLog("info", `Files uploaded: ${filesUploaded}`);
 
         // Show vendors detected
-        if (data.result?.vendorsDetected && data.result.vendorsDetected.length > 0) {
-          addLog("info", `🏢 Vendors detected: ${data.result.vendorsDetected.join(", ")}`);
+        if (result.result.vendorsDetected && result.result.vendorsDetected.length > 0) {
+          addLog("info", `🏢 Vendors detected: ${result.result.vendorsDetected.join(", ")}`);
         }
 
         // Show detailed upload information
-        if (data.result?.uploadedFiles && data.result.uploadedFiles.length > 0) {
+        if (result.result.uploadedFiles && result.result.uploadedFiles.length > 0) {
           addLog("info", `📁 Files uploaded to Drive:`);
-          data.result.uploadedFiles.forEach((file, index) => {
+          result.result.uploadedFiles.forEach((file, index) => {
             addLog("success", `  ✓ ${index + 1}. ${file.vendor}/invoices/${file.filename}`);
           });
         }
-
-        if (data.jobId && scheduleType === "auto") {
-          addLog("success", `⏰ Scheduled ${frequency} fetch created (Job ID: ${data.jobId})`);
-        }
-
-        setFetchProgress({ current: 0, total: 0, message: "" });
 
         toast({
           title: "✅ Fetch Complete!",
@@ -277,40 +244,24 @@ const EmailSync = () => {
         // Refresh sync status and vendors
         fetchSyncStatus();
         fetchVendorFolders();
-      } else {
-        addLog("error", `✗ ${data.message || "Failed to fetch emails"}`);
-        
-        if (data.details) {
-          addLog("error", `Details: ${data.details}`);
-        }
-        
-        if (data.suggestions && Array.isArray(data.suggestions)) {
-          data.suggestions.forEach((suggestion: string) => {
-            addLog("info", `💡 ${suggestion}`);
-          });
-        }
-
+      } else if (result.status === "failed") {
+        addLog("error", `✗ Job failed: ${result.error?.message || "Unknown error"}`);
         toast({
           title: "Error",
-          description: data.message || "Failed to fetch emails",
+          description: result.error?.message || "Email fetch failed",
           variant: "destructive",
         });
       }
     } catch (error) {
-      setFetchProgress({ current: 0, total: 0, message: "" });
       addLog("error", `Network error: ${error instanceof Error ? error.message : "Unknown error"}`);
       toast({
         title: "Network Error",
-        description: "Could not connect to email service",
+        description: error instanceof Error ? error.message : "Could not connect to email service",
         variant: "destructive",
       });
     } finally {
-      // Always clear the progress interval
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
       setIsFetching(false);
+      setFetchProgress({ current: 0, total: 0, message: "" });
     }
   };
 
@@ -356,10 +307,11 @@ const EmailSync = () => {
         });
         fetchSyncStatus();
       } else {
-        addLog("error", data.message || "Failed to reset sync status");
+        const errorMessage = (data as any)?.message || "Failed to reset sync status";
+        addLog("error", errorMessage);
         toast({
           title: "Error",
-          description: data.message || "Failed to reset sync status",
+          description: errorMessage,
           variant: "destructive",
         });
       }
