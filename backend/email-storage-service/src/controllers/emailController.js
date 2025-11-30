@@ -2,6 +2,47 @@ import { fetchAndProcessEmails } from "../services/gmailService.js";
 import scheduleEmailJob, { getScheduledJobs, cancelScheduledJob } from "../services/schedulerService.js";
 import User from "../models/User.js";
 
+// ===============================================
+// IN-MEMORY JOB STORE (for manual fetch tracking)
+// ===============================================
+const jobStore = new Map();
+
+function createJob(userId, filters) {
+  const jobId = `${userId}_${Date.now()}`;
+  jobStore.set(jobId, {
+    jobId,
+    userId,
+    status: "processing",
+    filters,
+    createdAt: new Date().toISOString(),
+    result: null,
+    error: null
+  });
+  return jobId;
+}
+
+function updateJobSuccess(jobId, result) {
+  const job = jobStore.get(jobId);
+  if (job) {
+    job.status = "completed";
+    job.result = result;
+    job.completedAt = new Date().toISOString();
+  }
+}
+
+function updateJobError(jobId, error) {
+  const job = jobStore.get(jobId);
+  if (job) {
+    job.status = "failed";
+    job.error = error;
+    job.completedAt = new Date().toISOString();
+  }
+}
+
+export function getJobStatus(jobId) {
+  return jobStore.get(jobId) || null;
+}
+
 export const fetchEmailsController = async (req, res) => {
   try {
     const { 
@@ -70,14 +111,39 @@ export const fetchEmailsController = async (req, res) => {
       lastSyncedAt: dbUser.lastSyncedAt 
     });
 
-    // Manual Fetch
+    // Manual Fetch - NOW ASYNC WITH JOB TRACKING
     if (schedule === "manual") {
-      // Pass through fromDate as provided (Date parsing with time handled downstream)
-      const result = await fetchAndProcessEmails(userId, fromDate, { emails: emailList, onlyPdf, forceSync });
-      return res.status(200).json({
-        message: "Manual invoice fetch completed.",
-        filtersUsed: { emails: emailList, emailCount: emailList ? emailList.length : 0, onlyPdf, fromDate, forceSync },
-        result,
+      const filters = { 
+        emails: emailList, 
+        emailCount: emailList ? emailList.length : 0, 
+        onlyPdf, 
+        fromDate, 
+        forceSync 
+      };
+      
+      const jobId = createJob(userId, filters);
+      
+      // Process in background
+      setImmediate(async () => {
+        try {
+          const result = await fetchAndProcessEmails(userId, fromDate, { emails: emailList, onlyPdf, forceSync });
+          updateJobSuccess(jobId, result);
+          console.log(`✅ Job ${jobId} completed successfully`);
+        } catch (error) {
+          console.error(`❌ Job ${jobId} failed:`, error.message);
+          updateJobError(jobId, {
+            message: error.message,
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
+
+      // Return immediately with jobId
+      return res.status(202).json({
+        message: "Email fetch job started. Use the jobId to check status.",
+        jobId,
+        filtersUsed: filters,
+        statusEndpoint: `/api/v1/email/jobs/${jobId}`
       });
     }
 
@@ -128,6 +194,42 @@ export const fetchEmailsController = async (req, res) => {
       message: userMessage,
       details: details,
       suggestions: suggestions.length > 0 ? suggestions : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+/**
+ * Get job status by jobId
+ */
+export const getJobStatusController = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    if (!jobId) {
+      return res.status(400).json({
+        message: "Job ID is required.",
+        details: "Please provide a valid job ID to check status."
+      });
+    }
+
+    const job = getJobStatus(jobId);
+
+    if (!job) {
+      return res.status(404).json({
+        message: "Job not found.",
+        details: `No job found with ID ${jobId}. It may have expired or never existed.`,
+        jobId
+      });
+    }
+
+    return res.status(200).json(job);
+
+  } catch (error) {
+    console.error("Error in getJobStatusController:", error);
+    return res.status(500).json({
+      message: "Failed to retrieve job status.",
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }

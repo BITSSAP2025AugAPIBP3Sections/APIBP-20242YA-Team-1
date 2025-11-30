@@ -23,13 +23,10 @@ function makeProxyOptions(serviceName, target) {
       return path.replace(new RegExp(`^/${serviceName}`), '') || '/';
     },
     onProxyReq: (proxyReq, req, res) => {
+      console.log(`[GATEWAY] Proxying: ${req.method} ${req.url} -> ${target}`);
+      
       // remove incoming cookie header so backend does not receive httpOnly cookie
       proxyReq.removeHeader('cookie');
-
-      // remove hop-by-hop headers
-      proxyReq.removeHeader('connection');
-      proxyReq.removeHeader('keep-alive');
-      proxyReq.removeHeader('transfer-encoding');
 
       // add minimal safe headers (user context)
       if (req.user) {
@@ -47,8 +44,8 @@ function makeProxyOptions(serviceName, target) {
         res.status(502).json({ error: 'Bad Gateway', message: 'Target service error' });
       }
     },
-    timeout: 15000,
-    proxyTimeout: 15000,
+    timeout: 120000,        // 2 minutes for initial connection
+    proxyTimeout: 120000,   // 2 minutes for response
     selfHandleResponse: false
   };
 }

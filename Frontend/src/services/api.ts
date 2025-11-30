@@ -140,6 +140,7 @@ export interface FetchEmailsResponse {
   jobId?: string;
   details?: string;
   suggestions?: string[];
+  statusEndpoint?: string;
   result?: {
     totalProcessed: number;
     filesUploaded: number;
@@ -160,24 +161,70 @@ export interface FetchEmailsResponse {
   };
 }
 
+export interface JobStatus {
+  jobId: string;
+  userId: string;
+  status: "processing" | "completed" | "failed";
+  filters: {
+    emails: string[] | null;
+    emailCount: number;
+    onlyPdf: boolean;
+    fromDate: string;
+    forceSync: boolean;
+  };
+  createdAt: string;
+  completedAt?: string;
+  result?: {
+    totalProcessed: number;
+    filesUploaded: number;
+    uploadedFiles: Array<{
+      vendor: string;
+      filename: string;
+      path: string;
+      uploadedAt: string;
+    }>;
+    vendorsDetected: string[];
+  };
+  error?: {
+    message: string;
+    timestamp: string;
+  };
+}
+
 // ===============================================
 // Helper wrapper (always uses API Gateway)
 // ===============================================
 async function apiCall<T>(
   fullPath: string,
-  options?: RequestInit & { skipAuth?: boolean }
+  options?: RequestInit & { skipAuth?: boolean; timeout?: number }
 ): Promise<{ data: T; response: Response }> {
-  const response = await fetch(`${API_GATEWAY_URL}${fullPath}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    credentials: "include",
-  });
+  const timeoutMs = options?.timeout || 120000; // Default 2 minutes
+  
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(`${API_GATEWAY_URL}${fullPath}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.headers || {}),
+      },
+      credentials: "include",
+      signal: controller.signal,
+    });
 
-  const data = await response.json().catch(() => ({} as T));
-  return { data, response };
+    clearTimeout(timeoutId);
+    const data = await response.json().catch(() => ({} as T));
+    return { data, response };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
 }
 
 // ===============================================
@@ -202,6 +249,144 @@ export async function fetchEmails(
       body: JSON.stringify(request),
     }
   );
+}
+
+/**
+ * Check the status of an email fetch job
+ */
+export async function getJobStatus(jobId: string) {
+  return apiCall<JobStatus>(
+    `/email/api/v1/email/jobs/${jobId}`
+  );
+}
+
+/**
+ * Poll for job completion with exponential backoff
+ * @param jobId - The job ID to poll
+ * @param maxAttempts - Maximum number of polling attempts (default: 60)
+ * @param initialInterval - Initial polling interval in ms (default: 2000)
+ * @param maxInterval - Maximum polling interval in ms (default: 10000)
+ * @returns Promise that resolves when job completes or fails
+ */
+export async function pollJobStatus(
+  jobId: string,
+  maxAttempts = 60,
+  initialInterval = 2000,
+  maxInterval = 10000
+): Promise<JobStatus> {
+  let attempts = 0;
+  let interval = initialInterval;
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    
+    try {
+      const { data, response } = await getJobStatus(jobId);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get job status: ${response.statusText}`);
+      }
+
+      // Job completed successfully
+      if (data.status === "completed") {
+        return data;
+      }
+
+      // Job failed
+      if (data.status === "failed") {
+        throw new Error(data.error?.message || "Job failed");
+      }
+
+      // Still processing - wait before next poll
+      await new Promise(resolve => setTimeout(resolve, interval));
+      
+      // Exponential backoff (cap at maxInterval)
+      interval = Math.min(interval * 1.5, maxInterval);
+      
+    } catch (error) {
+      // If it's a job completion error (failed status), throw it
+      if (error instanceof Error && error.message.includes("Job failed")) {
+        throw error;
+      }
+      
+      // For network errors, retry
+      console.warn(`Poll attempt ${attempts} failed:`, error);
+      
+      if (attempts >= maxAttempts) {
+        throw new Error("Job polling timeout - max attempts reached");
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+  }
+
+  throw new Error("Job polling timeout - max attempts reached");
+}
+
+/**
+ * Fetch emails with automatic polling until completion
+ * This is a convenience wrapper around fetchEmails + pollJobStatus
+ */
+export async function fetchEmailsWithPolling(
+  request: FetchEmailsRequest,
+  onProgress?: (status: JobStatus) => void
+): Promise<JobStatus> {
+  // Start the job
+  const { data: startResponse, response } = await fetchEmails(request);
+  
+  if (!response.ok) {
+    throw new Error(startResponse.message || "Failed to start email fetch");
+  }
+
+  const jobId = startResponse.jobId;
+  if (!jobId) {
+    // Old behavior - job completed synchronously
+    return {
+      jobId: "sync",
+      userId: request.userId,
+      status: "completed",
+      filters: {
+        emails: request.email ? [request.email] : null,
+        emailCount: 0,
+        onlyPdf: request.onlyPdf ?? true,
+        fromDate: request.fromDate,
+        forceSync: request.forceSync ?? false,
+      },
+      createdAt: new Date().toISOString(),
+      result: startResponse.result,
+    };
+  }
+
+  // Poll for completion with progress callbacks
+  let lastStatus: JobStatus | null = null;
+  const pollWithProgress = async () => {
+    return pollJobStatus(jobId, 60, 2000, 10000);
+  };
+
+  // Optional: set up interval for progress updates
+  let progressInterval: NodeJS.Timeout | null = null;
+  if (onProgress) {
+    progressInterval = setInterval(async () => {
+      try {
+        const { data } = await getJobStatus(jobId);
+        if (JSON.stringify(data) !== JSON.stringify(lastStatus)) {
+          lastStatus = data;
+          onProgress(data);
+        }
+      } catch (err) {
+        console.warn("Progress check failed:", err);
+      }
+    }, 3000);
+  }
+
+  try {
+    const result = await pollWithProgress();
+    return result;
+  } finally {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
+  }
 }
 
 export async function getScheduledJobs(userId: string) {
@@ -292,6 +477,9 @@ export const api = {
 
   // Email
   fetchEmails,
+  getJobStatus,
+  pollJobStatus,
+  fetchEmailsWithPolling,
   getScheduledJobs,
   cancelScheduledJob,
   getUserSyncStatus,
