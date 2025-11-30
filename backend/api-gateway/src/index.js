@@ -1,72 +1,88 @@
 const express = require('express');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+require('dotenv').config();
 const routes = require('./routes');
 const verifyToken = require('./middleware/verifyToken');
 
 const app = express();
 const PORT = process.env.GATEWAY_PORT || 4000;
+const FRONTEND_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:8000';
 
-// Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
-}));
+// Security & parsing
+app.use(helmet());
+app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// CORS (allow credentials for httpOnly cookies)
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+  })
+);
+app.options('*', cors());
+
+// Logging
 app.use(morgan('combined'));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+app.use(
+  rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX || '300', 10),
+    standardHeaders: true,
+    legacyHeaders: false
+  })
+);
 
-// Root route
+// Root & health (public)
 app.get('/', (req, res) => {
   res.json({
     service: 'VendorIQ API Gateway',
     version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      auth: '/api/v1/auth',
-      email: '/api/v1/email',
-      ocr: '/api/v1/ocr',
-      chat: '/api/v1/chat',
-      analytics: '/api/v1/analytics'
-    }
+    routes: ['/auth/*', '/email/*', '/chat/*', '/ocr/*', '/analytics/*']
   });
 });
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Health check (no auth required)
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', service: 'API Gateway' });
-});
+// Mount proxies that must be public BEFORE JWT middleware when applicable:
+// Auth prefix is public (auth endpoints are public)
+app.use('/auth', routes.auth);
 
-// Apply JWT middleware to all routes
+// Email has some public OAuth endpoints under /auth/google
+// We mount email after JWT middleware but verifyToken will skip /email/auth/* based on rules
+
+// Apply JWT middleware for protected routes
 app.use(verifyToken);
 
-// Routes - mount at /api/v1
-app.use('/api/v1/auth', routes.auth);
-app.use('/api/v1/email', routes.email);
-app.use('/api/v1/ocr', routes.ocr);
-app.use('/api/v1/chat', routes.chat);
-app.use('/api/v1/analytics', routes.analytics);
+// Mount other service prefixes (protected by verifyToken, but verifyToken skips allowed public email auth)
+app.use('/email', routes.email);
+app.use('/chat', routes.chat);
+app.use('/ocr', routes.ocr);
+app.use('/analytics', routes.analytics);
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error'
-  });
+  console.error('Gateway Error:', err && err.stack ? err.stack : err);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+  } else {
+    next(err);
+  }
 });
 
-// 404 handler
+// 404 fallback
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 API Gateway running on port ${PORT}`);
+  console.log(`VendorIQ API Gateway listening on port ${PORT}`);
 });

@@ -1,25 +1,17 @@
 /**
- * Centralized API Service
- * All API calls should go through this service
+ * Centralized API Service — UPDATED FOR API GATEWAY
+ * All frontend calls now go through:
+ * http://localhost:4000/{service-prefix}/...
  */
 
-const API_BASE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || "http://localhost:4002";
-// Added: dedicated auth service base (different port) for /auth/me token retrieval
-const AUTH_BASE_URL = (import.meta as any).env?.VITE_AUTH_SERVICE_URL || "http://localhost:4001";
-// Chat service base (ensure defined to prevent runtime ReferenceError)
-// Priority order: explicit VITE_CHAT_BASE_URL, legacy VITE_CHAT_API_URL, fallback localhost
-const CHAT_BASE_URL = (import.meta as any).env?.VITE_CHAT_BASE_URL
-  || (import.meta as any).env?.VITE_CHAT_API_URL
-  || "http://localhost:4005/api/v1";
-
-const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:4000';
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL || "http://localhost:4000";
 
 export const API_ENDPOINTS = {
-  AUTH: `${API_GATEWAY_URL}/api/v1/auth`,
-  EMAIL: `${API_GATEWAY_URL}/api/v1/email`,
-  OCR: `${API_GATEWAY_URL}/api/v1/ocr`,
-  CHAT: `${API_GATEWAY_URL}/api/v1/chat`,
-  ANALYTICS: `${API_GATEWAY_URL}/api/v1/analytics`,
+  AUTH: `${API_GATEWAY_URL}/auth`,
+  EMAIL: `${API_GATEWAY_URL}/email`,
+  OCR: `${API_GATEWAY_URL}/ocr`,
+  CHAT: `${API_GATEWAY_URL}/chat`,
+  ANALYTICS: `${API_GATEWAY_URL}/analytics`,
 };
 
 export interface SyncStatus {
@@ -84,7 +76,6 @@ export interface ScheduledJob {
   createdAt: string;
 }
 
-// Chat / RAG Types
 export interface ChatSource {
   rank: number;
   vendor_name?: string;
@@ -112,6 +103,27 @@ export interface ChatVendorSummary {
     summary: { last_updated?: string; total_invoices?: number; total_amount?: number };
   };
   message?: string;
+}
+
+export interface AnalyticsResponse {
+  success?: boolean;
+  insights: {
+    highestSpend: { vendor: string; amount: number };
+    averageInvoice: number;
+    costReduction: number;
+    avgPaymentTime: number;
+    totalSpend?: number;
+    totalInvoices?: number;
+    vendorCount?: number;
+  };
+  monthlyTrend: { name: string; value: number }[];
+  topVendors: { name: string; value: number }[];
+  spendByCategory: { name: string; value: number }[];
+  quarterlyTrend: { name: string; value: number }[];
+  period?: string;
+  message?: string;
+  cached?: boolean;
+  llmSummary?: string;
 }
 
 export interface FetchEmailsRequest {
@@ -148,265 +160,152 @@ export interface FetchEmailsResponse {
   };
 }
 
-// ============================================================
-// Access Token Handling (Bearer)
-// ============================================================
-let accessToken: string | null = null; // in-memory cache (not persisted)
-let triedFetchMe = false; // avoid repeated /auth/me calls
-
-/**
- * Manually set (or clear) the access token after login/logout flows.
- */
-export function setAccessToken(token: string | null) {
-  accessToken = token;
-}
-
-/**
- * Retrieve current access token, attempting single lazy fetch via /auth/me if not cached.
- * Uses auth service base. Relies on httpOnly cookie being sent automatically (credentials: 'include').
- */
-export async function ensureAccessToken(): Promise<string | null> {
-  if (accessToken) return accessToken;
-  if (triedFetchMe) return null; // already attempted, don't spam
-  triedFetchMe = true;
-  try {
-    const resp = await fetch(`${AUTH_BASE_URL}/api/v1/auth/me`, { credentials: 'include' });
-    if (!resp.ok) return null;
-    const json = await resp.json();
-    if (json?.isAuthenticated && json?.access_token) {
-      accessToken = json.access_token;
-      return accessToken;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Helper function for API calls (email-storage-service)
+// ===============================================
+// Helper wrapper (always uses API Gateway)
+// ===============================================
 async function apiCall<T>(
-  endpoint: string,
+  fullPath: string,
   options?: RequestInit & { skipAuth?: boolean }
 ): Promise<{ data: T; response: Response }> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const publicPaths = new Set<string>(['/', '/health', '/api-info', '/api-docs', '/auth/google', '/auth/google/callback']);
-  let authHeader: Record<string, string> = {};
-  if (!options?.skipAuth && !publicPaths.has(endpoint)) {
-    const token = await ensureAccessToken();
-    if (token) authHeader.Authorization = `Bearer ${token}`;
-  }
-  const response = await fetch(url, {
+  const response = await fetch(`${API_GATEWAY_URL}${fullPath}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      ...authHeader,
-      ...options?.headers,
+      "Content-Type": "application/json",
+      ...(options?.headers || {}),
     },
-    credentials: 'include', // ensure cookies (refresh/access) are sent for any silent flows
+    credentials: "include",
   });
-  const data = await response.json();
+
+  const data = await response.json().catch(() => ({} as T));
   return { data, response };
 }
 
-// ============================================================================
-// AUTH APIs
-// ============================================================================
+// ===============================================
+// AUTH APIs (via gateway /auth/...)
+// ===============================================
 
-/**
- * Get Google OAuth URL
- * Redirects to Google OAuth flow (public – skip bearer attachment)
- */
 export function getGoogleAuthUrl(): string {
-  return `${API_BASE_URL}/auth/google`;
+  return `${API_GATEWAY_URL}/email/auth/google`;
 }
 
-// ============================================================================
-// EMAIL APIs
-// ============================================================================
+// ===============================================
+// EMAIL APIs (via gateway /email/...)
+// ===============================================
 
-/**
- * Fetch and process emails from Gmail
- */
 export async function fetchEmails(
   request: FetchEmailsRequest
-): Promise<{ data: FetchEmailsResponse; response: Response }> {
-  return apiCall<FetchEmailsResponse>("/api/v1/email/fetch", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
+) {
+  return apiCall<FetchEmailsResponse>(
+    `/email/api/v1/email/fetch`,
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    }
+  );
 }
 
-// ============================================================================
-// SCHEDULED JOBS APIs
-// ============================================================================
-
-/**
- * Get all scheduled jobs for a user
- */
-export async function getScheduledJobs(userId: string): Promise<{
-  data: { message: string; count: number; jobs: ScheduledJob[] };
-  response: Response;
-}> {
-  return apiCall(`/api/v1/emails/schedule/${userId}`);
+export async function getScheduledJobs(userId: string) {
+  return apiCall(`/email/api/v1/emails/schedule/${userId}`);
 }
 
-/**
- * Cancel a scheduled job
- */
-export async function cancelScheduledJob(
-  userId: string,
-  jobId: string
-): Promise<{ data: { message: string; jobId: string }; response: Response }> {
-  return apiCall(`/api/v1/emails/schedule/${userId}/${jobId}`, {
+export async function cancelScheduledJob(userId: string, jobId: string) {
+  return apiCall(
+    `/email/api/v1/emails/schedule/${userId}/${jobId}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function getUserSyncStatus(userId: string) {
+  return apiCall<SyncStatus>(`/email/api/v1/users/${userId}/sync-status`);
+}
+
+export async function resetUserSyncStatus(userId: string) {
+  return apiCall(`/email/api/v1/users/${userId}/sync-status`, {
     method: "DELETE",
   });
 }
 
-// ============================================================================
-// USER APIs
-// ============================================================================
-
-/**
- * Get user sync status
- */
-export async function getUserSyncStatus(userId: string): Promise<{
-  data: SyncStatus;
-  response: Response;
-}> {
-  return apiCall<SyncStatus>(`/api/v1/users/${userId}/sync-status`);
+export async function disconnectGoogleAccount(userId: string) {
+  return apiCall(
+    `/email/api/v1/users/${userId}/disconnect-google`,
+    { method: "POST" }
+  );
 }
 
-/**
- * Reset user sync status
- */
-export async function resetUserSyncStatus(userId: string): Promise<{
-  data: { message: string; userId: string };
-  response: Response;
-}> {
-  return apiCall(`/api/v1/users/${userId}/sync-status`, {
-    method: "DELETE",
-  });
+export async function getVendors(userId: string) {
+  return apiCall<{ userId: string; total: number; vendors: Vendor[] }>(
+    `/email/api/v1/drive/users/${userId}/vendors`
+  );
 }
 
-/**
- * Disconnect Google account (clear stored OAuth tokens)
- */
-export async function disconnectGoogleAccount(userId: string): Promise<{ data: { message: string; userId: string; hasGoogleConnection?: boolean }; response: Response }> {
-  return apiCall(`/api/v1/users/${userId}/disconnect-google`, { method: "POST" });
+export async function getInvoices(userId: string, vendorId: string) {
+  return apiCall(
+    `/email/api/v1/drive/users/${userId}/vendors/${vendorId}/invoices`
+  );
 }
 
-// ============================================================================
-// VENDOR APIs
-// ============================================================================
-
-/**
- * Get all vendor folders for a user
- */
-export async function getVendors(userId: string): Promise<{
-  data: { userId: string; total: number; vendors: Vendor[] };
-  response: Response;
-}> {
-  console.log('[api.getVendors] fetching vendors for userId', userId);
-  const result = await apiCall<{ userId: string; total: number; vendors: Vendor[] }>(`/api/v1/drive/users/${userId}/vendors`);
-  console.log('[api.getVendors] response status', result.response.status, 'data:', result.data);
-  return result;
+export async function getVendorMaster(userId: string, vendorId: string) {
+  return apiCall<MasterSummary>(
+    `/email/api/v1/drive/users/${userId}/vendors/${vendorId}/master`
+  );
 }
 
-// ============================================================================
-// INVOICE APIs
-// ============================================================================
+// ===============================================
+// CHAT APIs (via gateway /chat/...)
+// ===============================================
 
-/**
- * Get all invoices for a specific vendor
- */
-export async function getInvoices(
-  userId: string,
-  vendorId: string
-): Promise<{
-  data: {
-    userId: string;
-    vendorFolderId: string;
-    invoiceFolderId: string;
-    total: number;
-    invoices: Invoice[];
-  };
-  response: Response;
-}> {
-  return apiCall(`/api/v1/drive/users/${userId}/vendors/${vendorId}/invoices`);
-}
-
-export async function getVendorMaster(
-  userId: string,
-  vendorId: string
-): Promise<{
-  data: MasterSummary;
-  response: Response;
-}> {
-  return apiCall(`/api/v1/drive/users/${userId}/vendors/${vendorId}/master`);
-}
-
-// ============================================================================
-// CHAT / RAG APIs
-// ============================================================================
-
-/**
- * Query Vendor knowledge base using RAG pipeline.
- */
-export async function getChatAnswer(
-  question: string,
-  vendorName?: string,
-  userId?: string
-): Promise<{ data: ChatAnswerResponse; response: Response }> {
+export async function getChatAnswer(question: string, vendorName?: string, userId?: string) {
   const qs = new URLSearchParams({ question });
   if (vendorName) qs.append("vendor_name", vendorName);
   if (userId) qs.append("userId", userId);
-  const url = `${CHAT_BASE_URL}/query?${qs.toString()}`;
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+
+  return apiCall<ChatAnswerResponse>(
+    `/chat/api/v1/query?${qs.toString()}`
+  );
 }
 
-export async function loadChatKnowledge(userId: string, incremental = true): Promise<{ data: any; response: Response }> {
-  const url = `${CHAT_BASE_URL}/knowledge/load?userId=${encodeURIComponent(userId)}&incremental=${incremental}`;
-  const response = await fetch(url, { method: "POST", headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+export async function loadChatKnowledge(userId: string, incremental = true) {
+  return apiCall(
+    `/chat/api/v1/knowledge/load?userId=${userId}&incremental=${incremental}`,
+    { method: "POST" }
+  );
 }
 
-export async function getChatVendorSummary(vendorName: string): Promise<{ data: ChatVendorSummary; response: Response }> {
-  const url = `${CHAT_BASE_URL}/vendor/summary?vendor_name=${encodeURIComponent(vendorName)}`;
-  const response = await fetch(url, { headers: { Accept: "application/json" } });
-  const data = await response.json();
-  return { data, response };
+export async function getChatVendorSummary(vendorName: string) {
+  return apiCall<ChatVendorSummary>(
+    `/chat/api/v1/vendor/summary?vendor_name=${encodeURIComponent(vendorName)}`
+  );
 }
 
+export async function getAnalytics(period: string, userId?: string) {
+  const qs = new URLSearchParams({ period });
+  if (userId) qs.append("userId", userId);
 
-// ============================================================================
-// EXPORTS
-// ============================================================================
+  return apiCall<AnalyticsResponse>(
+    `/chat/api/v1/analytics?${qs.toString()}`
+  );
+}
 
 export const api = {
   // Auth
   getGoogleAuthUrl,
-  
+
   // Email
   fetchEmails,
-  
-  // Scheduled Jobs
   getScheduledJobs,
   cancelScheduledJob,
-  
-  // User
   getUserSyncStatus,
   resetUserSyncStatus,
   disconnectGoogleAccount,
-  
-  // Vendor
   getVendors,
-  
-  // Invoice
   getInvoices,
   getVendorMaster,
+
+  // Chat
+  getChatAnswer,
+  loadChatKnowledge,
+  getChatVendorSummary,
+  getAnalytics,
 };
 
 export default api;
