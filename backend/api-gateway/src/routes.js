@@ -1,5 +1,6 @@
 // src/routes.js
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const { logServiceProxy, logProxyError, logProxyResponse } = require('./middleware/logger');
 
 const SERVICES = {
   auth: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
@@ -23,7 +24,8 @@ function makeProxyOptions(serviceName, target) {
       return path.replace(new RegExp(`^/${serviceName}`), '') || '/';
     },
     onProxyReq: (proxyReq, req, res) => {
-      console.log(`[GATEWAY] Proxying: ${req.method} ${req.url} -> ${target}`);
+      // Log the proxy request
+      logServiceProxy(serviceName, target, req, proxyReq);
       
       // remove incoming cookie header so backend does not receive httpOnly cookie
       proxyReq.removeHeader('cookie');
@@ -36,10 +38,20 @@ function makeProxyOptions(serviceName, target) {
       }
 
       // forward original request id / trace if present
-      if (req.headers['x-request-id']) proxyReq.setHeader('x-request-id', req.headers['x-request-id']);
+      if (req.requestId) {
+        proxyReq.setHeader('x-request-id', req.requestId);
+      } else if (req.headers['x-request-id']) {
+        proxyReq.setHeader('x-request-id', req.headers['x-request-id']);
+      }
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // Log the proxy response
+      logProxyResponse(serviceName, proxyRes, req);
     },
     onError: (err, req, res) => {
-      console.error(`Proxy error when forwarding to ${target}:`, err && err.message ? err.message : err);
+      // Log the proxy error
+      logProxyError(serviceName, target, req, err);
+      
       if (!res.headersSent) {
         res.status(502).json({ error: 'Bad Gateway', message: 'Target service error' });
       }

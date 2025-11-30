@@ -2,11 +2,11 @@ const express = require('express');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const routes = require('./routes');
 const verifyToken = require('./middleware/verifyToken');
+const { logger, requestLogger } = require('./middleware/logger');
 
 const app = express();
 const PORT = process.env.GATEWAY_PORT || 4000;
@@ -15,6 +15,9 @@ const FRONTEND_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:8000';
 // Security & parsing
 app.use(helmet());
 app.use(cookieParser());
+
+// Apply centralized logging middleware EARLY to capture all requests
+app.use(requestLogger);
 
 // IMPORTANT: Don't parse body for proxy routes - let the target service handle it
 // Only parse body for direct routes (/, /health)
@@ -45,8 +48,8 @@ app.use(
 );
 app.options('*', cors());
 
-// Logging
-app.use(morgan('combined'));
+// Logging (morgan removed in favor of centralized logger, but keeping for backwards compatibility)
+// app.use(morgan('combined')); // You can remove this line as it's redundant now
 
 // Rate limiting
 app.use(
@@ -86,7 +89,14 @@ app.use('/analytics', routes.analytics);
 
 // Error handling
 app.use((err, req, res, next) => {
-  console.error('Gateway Error:', err && err.stack ? err.stack : err);
+  logger.error('Gateway Error', {
+    requestId: req.requestId,
+    error: err.message,
+    stack: err.stack,
+    url: req.originalUrl || req.url,
+    method: req.method
+  });
+  
   if (!res.headersSent) {
     res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
   } else {
@@ -96,9 +106,15 @@ app.use((err, req, res, next) => {
 
 // 404 fallback
 app.use((req, res) => {
+  logger.warn('Route not found', {
+    requestId: req.requestId,
+    url: req.originalUrl || req.url,
+    method: req.method
+  });
   res.status(404).json({ error: 'Route not found' });
 });
 
 app.listen(PORT, () => {
+  logger.info(`VendorIQ API Gateway started`, { port: PORT, environment: process.env.NODE_ENV || 'development' });
   console.log(`VendorIQ API Gateway listening on port ${PORT}`);
 });
