@@ -1,74 +1,56 @@
-const axios = require('axios');
+// src/middleware/verifyToken.js
+const jwt = require('jsonwebtoken');
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:4001';
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const JWT_ALGORITHM = process.env.JWT_ALGORITHM || 'HS256';
+const COOKIE_NAME = process.env.TOKEN_COOKIE_NAME || 'access_token';
 
-// Routes that don't require JWT validation
-const PUBLIC_ROUTES = [
-  '/api/v1/auth/login',
-  '/api/v1/auth/register',
-  '/api/v1/auth/refresh',
-  '/api/v1/auth/google/login',
-  '/api/v1/auth/me',
-  '/api/v1/oauth2callback',
-  '/oauth2callback'
-];
+// Public path checks - these will NOT require JWT
+function isPublicPath(originalUrl) {
+  if (!originalUrl) return false;
 
-const verifyToken = async (req, res, next) => {
-  const path = req.path;
+  // Public gateway-level endpoints
+  if (originalUrl === '/' || originalUrl === '/health') return true;
 
-  // Skip JWT validation for public routes
-  if (PUBLIC_ROUTES.some(route => path.startsWith(route) || path === route)) {
-    return next();
-  }
+  // Auth service public endpoints (mounted under /auth)
+  if (originalUrl.startsWith('/auth')) return true;
 
-  // Extract token from Authorization header
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ 
-      error: 'Unauthorized', 
-      message: 'No token provided' 
-    });
-  }
+  // Email service OAuth endpoints are public and will be called via /email/auth/*
+  if (originalUrl.startsWith('/email/auth')) return true;
+  if (originalUrl.startsWith('/email/auth/google')) return true;
 
-  const token = authHeader.split(' ')[1];
+  return false;
+}
 
+module.exports = function verifyToken(req, res, next) {
   try {
-    // Verify token with auth service
-    const response = await axios.post(
-      `${AUTH_SERVICE_URL}/api/v1/auth/verify`,
-      {},
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000
+    // If path is public, skip verification
+    const originalUrl = req.originalUrl || req.url;
+    if (isPublicPath(originalUrl)) return next();
+
+    // Read token from cookie first, fallback to Authorization header
+    let token = null;
+    if (req.cookies && req.cookies[COOKIE_NAME]) {
+      token = req.cookies[COOKIE_NAME];
+    } else if (req.headers && req.headers.authorization) {
+      const parts = req.headers.authorization.split(' ');
+      if (parts.length === 2 && /^Bearer$/i.test(parts[0])) {
+        token = parts[1];
       }
-    );
-
-    // Attach decoded user info to request
-    req.user = response.data.user;
-    req.token = token;
-
-    // Add user info to headers for downstream services
-    req.headers['x-user-id'] = req.user.id || req.user._id;
-    req.headers['x-user-email'] = req.user.email;
-
-    next();
-  } catch (error) {
-    if (error.response) {
-      return res.status(error.response.status).json({
-        error: 'Unauthorized',
-        message: error.response.data.message || 'Invalid token'
-      });
     }
-    
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Token verification failed'
-    });
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized - token missing' });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: [JWT_ALGORITHM] });
+
+    // Attach minimal user info
+    req.user = decoded || {};
+    return next();
+  } catch (err) {
+    console.error('JWT verification failed:', err && err.message ? err.message : err);
+    return res.status(401).json({ error: 'Unauthorized - invalid token' });
   }
 };
-
-module.exports = verifyToken;

@@ -1,88 +1,63 @@
-const express = require('express');
-const axios = require('axios');
+// src/routes.js
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
-// Service URLs from environment variables
 const SERVICES = {
-  AUTH: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
-  EMAIL: process.env.EMAIL_SERVICE_URL || 'http://localhost:4002',
-  OCR: process.env.OCR_SERVICE_URL || 'http://localhost:4003',
-  CHAT: process.env.CHAT_SERVICE_URL || 'http://localhost:4005',
-  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4004'
+  auth: process.env.AUTH_SERVICE_URL || 'http://localhost:4001',
+  email: process.env.EMAIL_SERVICE_URL || 'http://localhost:4002',
+  ocr: process.env.OCR_SERVICE_URL || 'http://localhost:4003',
+  analytics: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4004',
+  chat: process.env.CHAT_SERVICE_URL || 'http://localhost:4005'
 };
 
-// Helper function to proxy requests with user context
-const proxyRequest = (serviceUrl, servicePrefix) => async (req, res, next) => {
-  try {
-    // Build the full path for the backend service
-    const fullPath = `${servicePrefix}${req.path}`;
-    
-    // Prepare headers with user context
-    const headers = {
-      ...req.headers,
-      host: new URL(serviceUrl).host
-    };
+function makeProxyOptions(serviceName, target) {
+  return {
+    target,
+    changeOrigin: true,
+    secure: false,
+    ws: true,
+    logLevel: 'warn',
+    // remove the gateway prefix (/auth, /email, /chat, /ocr, /analytics)
+    pathRewrite: (path, req) => {
+      // strip only the first path segment (e.g., /auth -> '')
+      // so /auth/api/v1/auth/login -> /api/v1/auth/login
+      return path.replace(new RegExp(`^/${serviceName}`), '') || '/';
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      // remove incoming cookie header so backend does not receive httpOnly cookie
+      proxyReq.removeHeader('cookie');
 
-    // Add user info from JWT middleware if available
-    if (req.user) {
-      headers['x-user-id'] = req.user.id || req.user._id || '';
-      headers['x-user-email'] = req.user.email || '';
-      headers['x-user-role'] = req.user.role || '';
-    }
+      // remove hop-by-hop headers
+      proxyReq.removeHeader('connection');
+      proxyReq.removeHeader('keep-alive');
+      proxyReq.removeHeader('transfer-encoding');
 
-    const response = await axios({
-      method: req.method,
-      url: `${serviceUrl}${fullPath}`,
-      data: req.body,
-      headers: headers,
-      params: req.query,
-      maxRedirects: 5,
-      validateStatus: (status) => status < 600 // Accept all status codes
-    });
+      // add minimal safe headers (user context)
+      if (req.user) {
+        if (req.user.id) proxyReq.setHeader('x-user-id', req.user.id);
+        if (req.user.email) proxyReq.setHeader('x-user-email', req.user.email);
+        if (req.user.role) proxyReq.setHeader('x-user-role', req.user.role);
+      }
 
-    // Forward response headers
-    Object.keys(response.headers).forEach(key => {
-      res.setHeader(key, response.headers[key]);
-    });
+      // forward original request id / trace if present
+      if (req.headers['x-request-id']) proxyReq.setHeader('x-request-id', req.headers['x-request-id']);
+    },
+    onError: (err, req, res) => {
+      console.error(`Proxy error when forwarding to ${target}:`, err && err.message ? err.message : err);
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Bad Gateway', message: 'Target service error' });
+      }
+    },
+    timeout: 15000,
+    proxyTimeout: 15000,
+    selfHandleResponse: false
+  };
+}
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    if (error.response) {
-      res.status(error.response.status).json(error.response.data);
-    } else if (error.code === 'ECONNREFUSED') {
-      res.status(503).json({ 
-        error: 'Service Unavailable', 
-        message: 'Backend service is not responding'
-      });
-    } else {
-      next(error);
-    }
-  }
-};
-
-// Auth routes
-const authRouter = express.Router();
-authRouter.all('*', proxyRequest(SERVICES.AUTH, '/api/v1/auth'));
-
-// Email routes
-const emailRouter = express.Router();
-emailRouter.all('*', proxyRequest(SERVICES.EMAIL, '/api/v1/email'));
-
-// OCR routes
-const ocrRouter = express.Router();
-ocrRouter.all('*', proxyRequest(SERVICES.OCR, '/api/v1/ocr'));
-
-// Chat routes
-const chatRouter = express.Router();
-chatRouter.all('*', proxyRequest(SERVICES.CHAT, '/api/v1/chat'));
-
-// Analytics routes
-const analyticsRouter = express.Router();
-analyticsRouter.all('*', proxyRequest(SERVICES.ANALYTICS, '/api/v1/analytics'));
-
+// Export proxies to be mounted by index.js
 module.exports = {
-  auth: authRouter,
-  email: emailRouter,
-  ocr: ocrRouter,
-  chat: chatRouter,
-  analytics: analyticsRouter
+  auth: createProxyMiddleware(makeProxyOptions('auth', SERVICES.auth)),
+  email: createProxyMiddleware(makeProxyOptions('email', SERVICES.email)),
+  ocr: createProxyMiddleware(makeProxyOptions('ocr', SERVICES.ocr)),
+  analytics: createProxyMiddleware(makeProxyOptions('analytics', SERVICES.analytics)),
+  chat: createProxyMiddleware(makeProxyOptions('chat', SERVICES.chat))
 };
