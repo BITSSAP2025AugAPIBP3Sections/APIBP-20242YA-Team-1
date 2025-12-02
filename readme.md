@@ -1,5 +1,6 @@
-# 📁 VendorIQ.AI  
+<div align="center">
 
+# 📁 VendorIQ.AI  
 ### 🤖 AI-Powered Invoice Automation Platform for SMBs
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/BITSSAP2025AugAPIBP3Sections/APIBP-20242YA-Team-1)
@@ -12,6 +13,7 @@
 [Overview](#-overview) • [Architecture](#-system-architecture) • [Setup](#-getting-started) • [APIs](#-api-endpoints) • [Tech Stack](#-tech-stack) • [Implementation](#-implementation-highlights)
 
 </div>
+
 
 ---
 
