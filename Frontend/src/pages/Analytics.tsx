@@ -120,9 +120,9 @@ export default function Analytics() {
             Please sync your mail or connect your Gmail account.<br />
             Go to <strong>Settings</strong> to check the status and sync your data.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
             <strong>Tip:</strong> After connecting your email, make sure to sync to see your latest analytics. If you face issues, retry syncing or check your connection status in Settings.
-          </div>
+          </div> */}
           <Button onClick={handleSync} variant="outline" size="lg">
             <RefreshCw className="h-4 w-4 mr-2" />
             Retry
@@ -147,9 +147,9 @@ export default function Analytics() {
               </Button>
             to check the status and sync your data.
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
+          {/* <div className="bg-blue-50 border border-blue-200 rounded p-3 text-blue-800 text-sm max-w-md">
             <strong>Tip:</strong> After connecting your email, make sure to sync to see your latest analytics. If you face issues, retry syncing or check your connection status in Settings.
-          </div>
+          </div> */}
         </div>
       </div>
     );

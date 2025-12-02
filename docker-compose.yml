@@ -57,6 +57,9 @@ services:
       - "4003:4003"
     env_file:
       - ./backend/ocr-extraction-service/.env
+    environment:
+      - CHAT_SERVICE_BASE_URL=http://chat-service:4005/api/v1
+      - EMAIL_SERVICE_BASE_URL=http://email-storage-service:4002
     volumes:
       - ocr_invoices_json:/app/invoices_json
       - ocr_invoices_pdf:/app/invoices_pdf
