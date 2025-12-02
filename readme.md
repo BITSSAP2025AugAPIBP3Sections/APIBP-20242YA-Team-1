@@ -31,12 +31,6 @@ They arrive scattered across emails, PDFs, and attachments — making tax audits
 
 ---
 
-## 🏗️ System Architecture
-
-<div align="center">
-  <img src="" width="85%" alt="Architecture Diagram"/>
-</div>
-
 ### 🧩 Services Overview
 
 | Service | Description | Key Tech | Port |
